@@ -14,6 +14,8 @@ confinement: strict
 apps:
   hermes:
     command: bin/hermes-wrapper hermes
+    common-id: hermes
+    aliases: [hermes]
     plugs:
       - network
       - network-bind
@@ -23,6 +25,7 @@ apps:
       - removable-media
   agent:
     command: bin/hermes-wrapper hermes-agent
+    aliases: [hermes-agent]
     plugs:
       - network
       - network-bind
@@ -32,6 +35,7 @@ apps:
       - removable-media
   acp:
     command: bin/hermes-wrapper hermes-acp
+    aliases: [hermes-acp]
     plugs:
       - network
       - network-bind

@@ -1,0 +1,40 @@
+#!/bin/sh -e
+
+# This hook runs when 'snap set' is called or during installation.
+# It reads settings from the snap configuration and updates the Hermes environment/config.
+
+# Define the config file location inside the snap's writable common area
+CONFIG_FILE="$SNAP_USER_COMMON/config.yaml"
+ENV_FILE="$SNAP_USER_COMMON/.env"
+
+# Ensure the directory exists (might not on first install)
+mkdir -p "$SNAP_USER_COMMON"
+
+# Helper to update key-value pairs in .env
+update_env() {
+    key=$1
+    value=$2
+    if [ -n "$value" ]; then
+        if grep -q "^$key=" "$ENV_FILE" 2>/dev/null; then
+            sed -i "s|^$key=.*|$key=$value|" "$ENV_FILE"
+        else
+            echo "$key=$value" >> "$ENV_FILE"
+        fi
+    fi
+}
+
+# 1. Handle API Keys (mapped to .env)
+update_env "OPENAI_API_KEY" "$(snap ctl get openai-api-key)"
+update_env "ANTHROPIC_API_KEY" "$(snap ctl get anthropic-api-key)"
+update_env "GEMINI_API_KEY" "$(snap ctl get gemini-api-key)"
+
+# 2. Handle Global Settings (mapped to config.yaml via hermes CLI if available, or direct append)
+# For simplicity in this hook, we'll focus on the most common ones.
+LOG_LEVEL=$(snap ctl get log-level)
+if [ -n "$LOG_LEVEL" ]; then
+    # Note: A more robust way would be to use a python script to edit the YAML
+    # but for a shell hook, we keep it lightweight.
+    echo "log_level: $LOG_LEVEL" >> "$CONFIG_FILE"
+fi
+
+echo "Hermes Snap configuration updated."
