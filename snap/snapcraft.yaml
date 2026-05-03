@@ -97,12 +97,12 @@ parts:
       - libxcomposite1
       - libxdamage1
       - libxext6
-      - libxfixes3t64
+      - libxfixes3
       - libxrandr2
       - libgbm1
       - libasound2t64
-      - libpango-1.0-0t64
-      - libcairo2t64
+      - libpango-1.0-0
+      - libcairo2
       - libv4l-0t64
       - libxshmfence1
       - libglu1-mesa
