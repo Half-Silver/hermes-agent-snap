@@ -64,6 +64,7 @@ parts:
     plugin: npm
     source: .
     npm-include-node: true
+    npm-node-version: '20'
     build-packages:
       - python3
       - make
