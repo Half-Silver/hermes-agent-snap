@@ -72,12 +72,18 @@ parts:
     override-build: |
       # Install dependencies locally to get agent-browser binary
       npm install
-      export PLAYWRIGHT_BROWSERS_PATH=$CRAFT_PART_INSTALL/usr/share/playwright
-      mkdir -p $PLAYWRIGHT_BROWSERS_PATH
-      # Use the local binary to install Chromium
+      
+      # Force agent-browser to install into the part's install dir
+      export HOME=$CRAFT_PART_INSTALL
       ./node_modules/.bin/agent-browser install
       
+      # Move to a cleaner location and cleanup the fake HOME
+      mkdir -p $CRAFT_PART_INSTALL/usr/share/playwright
+      mv $CRAFT_PART_INSTALL/.agent-browser/browsers/* $CRAFT_PART_INSTALL/usr/share/playwright/
+      rm -rf $CRAFT_PART_INSTALL/.agent-browser
+      
       # Now run the default build (global install to prefix)
+      unset HOME
       craftctl default
       
       # Also bundle Camoufox if possible
