@@ -1,0 +1,8 @@
+#!/bin/sh
+
+# Inform the user about the dot-hermes interface if they want to share data with the host
+echo "Hermes Agent installed. To allow access to your home directory and ~/.hermes, run:"
+echo "  snap connect hermes-agent:home"
+echo "  snap connect hermes-agent:dot-hermes"
+echo "  snap connect hermes-agent:ssh-keys"
+echo "  snap connect hermes-agent:removable-media"
