@@ -1,0 +1,26 @@
+#!/bin/bash
+
+# Set the path for bundled Playwright browsers
+export PLAYWRIGHT_BROWSERS_PATH="$SNAP/usr/share/playwright"
+
+# Set the path for bundled Camoufox engine
+export CAMOUFOX_DIR="$SNAP/usr/share/camoufox"
+
+# Ensure the Snap's bin and usr/bin are at the front of the PATH
+# This ensures bundled node, git, ripgrep, etc. are found first.
+export PATH="$SNAP/bin:$SNAP/usr/bin:$PATH"
+
+# Set HERMES_HOME to a writable location in the Snap's user data
+# This is where config.yaml, .env, and skills will be stored.
+export HERMES_HOME="$SNAP_USER_COMMON"
+
+# If the user has a .hermes in their home, and the dot-hermes plug is connected,
+# we might want to prioritize it, but Snap's strict confinement usually 
+# makes $SNAP_USER_COMMON a better default for persistence across updates.
+# However, many users expect ~/.hermes.
+if [ -d "$HOME/.hermes" ]; then
+    export HERMES_HOME_PERSISTENT="$HOME/.hermes"
+fi
+
+# Run the requested command
+exec "$SNAP/bin/$@"
