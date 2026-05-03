@@ -1,0 +1,113 @@
+name: hermes-agent
+base: core24
+version: '0.12.0'
+summary: The self-improving AI agent
+description: |
+  Hermes is an AI agent that creates skills from experience, 
+  improves them during use, and runs anywhere.
+  It features advanced tool-calling, web browsing, and 
+  cross-platform messaging capabilities.
+
+grade: stable
+confinement: strict
+
+apps:
+  hermes:
+    command: bin/hermes-wrapper hermes
+    plugs:
+      - network
+      - network-bind
+      - home
+      - dot-hermes
+      - ssh-keys
+      - removable-media
+  agent:
+    command: bin/hermes-wrapper hermes-agent
+    plugs:
+      - network
+      - network-bind
+      - home
+      - dot-hermes
+      - ssh-keys
+      - removable-media
+  acp:
+    command: bin/hermes-wrapper hermes-acp
+    plugs:
+      - network
+      - network-bind
+      - home
+      - dot-hermes
+
+plugs:
+  dot-hermes:
+    interface: personal-files
+    write:
+      - $HOME/.hermes
+
+parts:
+  hermes-agent:
+    plugin: python
+    source: .
+    python-packages:
+      - .[all]
+    build-packages:
+      - libffi-dev
+      - libssl-dev
+      - pkg-config
+    stage-packages:
+      - git
+      - ripgrep
+      - ffmpeg
+      - curl
+
+  browser-tools:
+    plugin: npm
+    source: .
+    npm-include-node: true
+    build-packages:
+      - python3
+      - make
+      - g++
+    override-build: |
+      craftctl default
+      export PLAYWRIGHT_BROWSERS_PATH=$CRAFT_PART_INSTALL/usr/share/playwright
+      mkdir -p $PLAYWRIGHT_BROWSERS_PATH
+      # Ensure node/npm from this part are used
+      export PATH=$CRAFT_PART_INSTALL/bin:$PATH
+      # Install chromium via agent-browser
+      ./node_modules/.bin/agent-browser install
+      
+      # Also bundle Camoufox if possible (it's in package.json)
+      # Camoufox usually downloads to ~/.cache/camoufox
+      # We'll set CAMOUFOX_DIR to bundle it.
+      export CAMOUFOX_DIR=$CRAFT_PART_INSTALL/usr/share/camoufox
+      mkdir -p $CAMOUFOX_DIR
+      # We don't have a direct 'install' command for camofox in the same way,
+      # but running the help or a dummy command might trigger it.
+      # Skip for now if it's too complex, but let's try.
+      # npx @askjo/camofox-browser --help || true
+    stage-packages:
+      - libnss3
+      - libatk1.0-0
+      - libatk-bridge2.0-0
+      - libcups2
+      - libdrm2
+      - libxkbcommon0
+      - libxcomposite1
+      - libxdamage1
+      - libxext6
+      - libxfixes3
+      - librandr2
+      - libgbm1
+      - libasound2
+      - libpango-1.0-0
+      - libcairo2
+      - libv4l-0
+      - libxshmfence1
+      - libglu1-mesa
+
+  wrappers:
+    plugin: dump
+    source: snap/local
+    organize:
+      hermes-wrapper: bin/hermes-wrapper
