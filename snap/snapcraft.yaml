@@ -65,8 +65,8 @@ parts:
       npm run sync-assets
       tsc -b
       vite build
-      mkdir -p $CRAFT_PART_INSTALL/web/build
-      cp -r build/* $CRAFT_PART_INSTALL/web/build/
+      mkdir -p $CRAFT_PART_INSTALL/hermes_cli/web_dist
+      cp -r ../hermes_cli/web_dist/* $CRAFT_PART_INSTALL/hermes_cli/web_dist/
   
   hermes-agent:
     plugin: python
