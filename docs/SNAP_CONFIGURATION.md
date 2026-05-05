@@ -3,48 +3,47 @@
 This document covers all the ways you can configure the Hermes Agent when installed as a Snap.
 
 ## 1. Snap Set Commands (Easiest)
-You can configure the most common settings directly using the `snap set` command.
+You can configure settings and manage services directly using the `snap set` command. This is ideal for remote management via tools like Canonical Landscape.
 
-| Setting | Command | Description |
-|---------|---------|-------------|
-| **OpenAI Key** | `sudo snap set hermes-agent openai-api-key=sk-...` | Sets the OpenAI API key in `.env` |
-| **Anthropic Key** | `sudo snap set hermes-agent anthropic-api-key=sk-...` | Sets the Anthropic API key in `.env` |
-| **Gemini Key** | `sudo snap set hermes-agent gemini-api-key=AI...` | Sets the Gemini API key in `.env` |
-| **Log Level** | `sudo snap set hermes-agent log-level=DEBUG` | Sets the logging verbosity |
+### Configuration Settings
+| Key | Command Example | Description |
+|-----|-----------------|-------------|
+| `openai-api-key` | `sudo snap set hermes-agent openai-api-key=sk-...` | OpenAI API Key (stored in `.env`) |
+| `anthropic-api-key` | `sudo snap set hermes-agent anthropic-api-key=sk-...` | Anthropic API Key (stored in `.env`) |
+| `gemini-api-key` | `sudo snap set hermes-agent gemini-api-key=AI...` | Gemini API Key (stored in `.env`) |
+| `deepseek-api-key` | `sudo snap set hermes-agent deepseek-api-key=sk-...` | DeepSeek API Key (stored in `.env`) |
+| `log-level` | `sudo snap set hermes-agent log-level=DEBUG` | Sets logging verbosity in `config.yaml` |
+| `model` | `sudo snap set hermes-agent model=gpt-4o` | Sets the default AI model in `config.yaml` |
+| `personality` | `sudo snap set hermes-agent personality=professional` | Sets the agent personality in `config.yaml` |
+
+### Service Management
+You can enable or disable background services. By default, they are disabled.
+
+| Service | Enable Command | Disable Command |
+|---------|----------------|-----------------|
+| **Background Agent** | `sudo snap set hermes-agent agent-service=enabled` | `sudo snap set hermes-agent agent-service=disabled` |
+| **ACP Server** | `sudo snap set hermes-agent acp-service=enabled` | `sudo snap set hermes-agent acp-service=disabled` |
+
+Check status: `snap services hermes-agent`
+View logs: `sudo snap logs -f hermes-agent.agent`
 
 ## 2. Configuration Files
-For advanced configuration, you can edit the configuration files directly in the Snap's writable area.
+For advanced manual configuration:
 
-*   **Config Location:** `/var/snap/hermes-agent/common/`
-*   **Main Config:** `/var/snap/hermes-agent/common/config.yaml`
-*   **Env Variables:** `/var/snap/hermes-agent/common/.env`
-
-> **Note:** These files are persistent across Snap updates.
+*   **Location:** `/var/snap/hermes-agent/common/`
+*   **Main Config:** `config.yaml`
+*   **Env Variables:** `.env`
 
 ## 3. Snap Interfaces (Permissions)
-Snaps run in a sandbox. You must explicitly grant permissions for certain tasks.
-
-| Interface | Command to Connect | Description |
-|-----------|--------------------|-------------|
-| **Home** | `sudo snap connect hermes-agent:home` | Allows reading/writing files in your home directory. |
-| **SSH Keys** | `sudo snap connect hermes-agent:ssh-keys` | Allows the agent to use your git/ssh keys. |
-| **Removable** | `sudo snap connect hermes-agent:removable-media` | Allows access to USB drives and external disks. |
-| **Hidden Files**| `sudo snap connect hermes-agent:dot-hermes` | Allows sharing data with an existing `~/.hermes` folder. |
+| Interface | Command to Connect |
+|-----------|--------------------|
+| **Home** | `sudo snap connect hermes-agent:home` |
+| **SSH Keys** | `sudo snap connect hermes-agent:ssh-keys` |
+| **Removable** | `sudo snap connect hermes-agent:removable-media` |
+| **Hidden Files**| `sudo snap connect hermes-agent:dot-hermes` |
 
 ## 4. Aliases
-The Snap provides the following commands:
-
-*   `hermes`: The main CLI for interacting with the agent.
-*   `hermes.agent`: Runs the background agent process.
-*   `hermes.acp`: Runs the Agent Client Protocol server.
-
-If the aliases are not automatically enabled, you can enable them manually:
-```bash
-sudo snap alias hermes-agent.hermes hermes
-```
+The Snap provides: `hermes`, `hermes.agent`, `hermes.acp`.
 
 ## 5. Setup Wizard
-You can also run the interactive setup wizard bundled with Hermes:
-```bash
-hermes setup
-```
+Run interactively: `hermes setup`

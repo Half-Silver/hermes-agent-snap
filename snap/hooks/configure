@@ -71,6 +71,23 @@ update_env "SLACK_APP_TOKEN" "slack-app-token"
 update_config "model" "model"
 update_config "personality" "personality"
 
+# 5. Service Control
+# Allows enabling/disabling background services via 'snap set'
+# Valid values: "enabled", "disabled"
+AGENT_SERVICE=$(snap ctl get agent-service)
+if [ "$AGENT_SERVICE" = "enabled" ]; then
+    snap ctl start --enable hermes-agent.agent
+elif [ "$AGENT_SERVICE" = "disabled" ]; then
+    snap ctl stop --disable hermes-agent.agent
+fi
+
+ACP_SERVICE=$(snap ctl get acp-service)
+if [ "$ACP_SERVICE" = "enabled" ]; then
+    snap ctl start --enable hermes-agent.acp
+elif [ "$ACP_SERVICE" = "disabled" ]; then
+    snap ctl stop --disable hermes-agent.acp
+fi
+
 # Handle nested config like logging.level (simplified as top-level if needed or skipped for now)
 LOG_LEVEL=$(snap ctl get log-level)
 if [ -n "$LOG_LEVEL" ]; then

@@ -25,6 +25,8 @@ apps:
       - removable-media
   agent:
     command: bin/hermes-wrapper hermes-agent
+    daemon: simple
+    install-mode: disable
     aliases: [hermes-agent]
     plugs:
       - network
@@ -35,6 +37,8 @@ apps:
       - removable-media
   acp:
     command: bin/hermes-wrapper hermes-acp
+    daemon: simple
+    install-mode: disable
     aliases: [hermes-acp]
     plugs:
       - network
