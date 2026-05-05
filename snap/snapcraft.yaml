@@ -144,7 +144,7 @@ parts:
       - libv4l-0t64
       - libxshmfence1
       - libglu1-mesa
-      - freeglut3
+      - libglut3.12
 
   wrappers:
     plugin: dump
