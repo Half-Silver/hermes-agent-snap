@@ -6,6 +6,9 @@ export PLAYWRIGHT_BROWSERS_PATH="$SNAP/usr/share/playwright"
 # Set the path for bundled Camoufox engine
 export CAMOUFOX_DIR="$SNAP/usr/share/camoufox"
 
+# Tell the Python backend where the dashboard web assets are located
+export HERMES_WEB_DIST="$SNAP/hermes_cli/web_dist"
+
 # Ensure the Snap's bin and usr/bin are at the front of the PATH
 # This ensures bundled node, git, ripgrep, etc. are found first.
 export PATH="$SNAP/bin:$SNAP/usr/bin:$PATH"
