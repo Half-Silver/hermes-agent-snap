@@ -53,8 +53,19 @@ plugs:
       - $HOME/.hermes
 
 parts:
+  web-frontend:
+    plugin: npm
+    source: web/
+    npm-node-version: '20'
+    override-build: |
+      npm install
+      npm run build
+      mkdir -p $CRAFT_PART_INSTALL/web
+      cp -r build $CRAFT_PART_INSTALL/web/
+  
   hermes-agent:
     plugin: python
+    after: [web-frontend]
     source: .
     python-packages:
       - .[all]
