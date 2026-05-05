@@ -2,6 +2,12 @@ name: hermes-agent
 base: core24
 version: '0.12.0'
 summary: The self-improving AI agent
+title: Hermes Agent
+license: Apache-2.0
+contact: developers@nousresearch.com
+source-code: https://github.com/NousResearch/hermes-agent
+issues: https://github.com/NousResearch/hermes-agent/issues
+website: https://hermes-agent.nousresearch.com
 description: |
   Hermes is an AI agent that creates skills from experience, 
   improves them during use, and runs anywhere.
@@ -138,6 +144,7 @@ parts:
       - libv4l-0t64
       - libxshmfence1
       - libglu1-mesa
+      - freeglut3
 
   wrappers:
     plugin: dump
