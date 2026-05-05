@@ -60,8 +60,11 @@ parts:
     npm-node-version: '20'
     override-build: |
       npm install
-      export PATH=$PWD/node_modules/.bin:$PATH
-      npm run build
+      # Run the prebuild script explicitly
+      npm run sync-assets
+      # Use npx to explicitly resolve binaries from node_modules
+      npx tsc -b
+      npx vite build
       mkdir -p $CRAFT_PART_INSTALL/web/build
       cp -r build/* $CRAFT_PART_INSTALL/web/build/
   
