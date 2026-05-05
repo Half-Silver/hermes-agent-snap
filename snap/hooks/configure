@@ -13,7 +13,7 @@ mkdir -p "$SNAP_USER_COMMON"
 update_env() {
     key=$1
     val_key=$2
-    value=$(snap ctl get "$val_key")
+    value=$(snapctl get "$val_key")
     if [ -n "$value" ]; then
         if grep -q "^$key=" "$ENV_FILE" 2>/dev/null; then
             # Escape value for sed
@@ -29,7 +29,7 @@ update_env() {
 update_config() {
     key=$1
     val_key=$2
-    value=$(snap ctl get "$val_key")
+    value=$(snapctl get "$val_key")
     if [ -n "$value" ]; then
         if [ ! -f "$CONFIG_FILE" ]; then
             echo "model: \"\"" > "$CONFIG_FILE"
@@ -74,22 +74,22 @@ update_config "personality" "personality"
 # 5. Service Control
 # Allows enabling/disabling background services via 'snap set'
 # Valid values: "enabled", "disabled"
-AGENT_SERVICE=$(snap ctl get agent-service)
+AGENT_SERVICE=$(snapctl get agent-service)
 if [ "$AGENT_SERVICE" = "enabled" ]; then
-    snap ctl start --enable hermes-agent.agent
+    snapctl start --enable hermes-agent.agent
 elif [ "$AGENT_SERVICE" = "disabled" ]; then
-    snap ctl stop --disable hermes-agent.agent
+    snapctl stop --disable hermes-agent.agent
 fi
 
-ACP_SERVICE=$(snap ctl get acp-service)
+ACP_SERVICE=$(snapctl get acp-service)
 if [ "$ACP_SERVICE" = "enabled" ]; then
-    snap ctl start --enable hermes-agent.acp
+    snapctl start --enable hermes-agent.acp
 elif [ "$ACP_SERVICE" = "disabled" ]; then
-    snap ctl stop --disable hermes-agent.acp
+    snapctl stop --disable hermes-agent.acp
 fi
 
 # Handle nested config like logging.level (simplified as top-level if needed or skipped for now)
-LOG_LEVEL=$(snap ctl get log-level)
+LOG_LEVEL=$(snapctl get log-level)
 if [ -n "$LOG_LEVEL" ]; then
     # Ensure logging section exists
     if ! grep -q "^logging:" "$CONFIG_FILE" 2>/dev/null; then
