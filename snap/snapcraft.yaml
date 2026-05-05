@@ -59,12 +59,11 @@ parts:
     npm-include-node: true
     npm-node-version: '20'
     override-build: |
+      npm install -g typescript vite
       npm install
-      # Run the prebuild script explicitly
       npm run sync-assets
-      # Use npx to explicitly resolve binaries from node_modules
-      npx tsc -b
-      npx vite build
+      tsc -b
+      vite build
       mkdir -p $CRAFT_PART_INSTALL/web/build
       cp -r build/* $CRAFT_PART_INSTALL/web/build/
   
