@@ -56,6 +56,7 @@ parts:
   web-frontend:
     plugin: npm
     source: web/
+    npm-include-node: true
     npm-node-version: '20'
     override-build: |
       npm install
