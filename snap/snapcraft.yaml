@@ -60,9 +60,10 @@ parts:
     npm-node-version: '20'
     override-build: |
       npm install
+      export PATH=$PWD/node_modules/.bin:$PATH
       npm run build
       mkdir -p $CRAFT_PART_INSTALL/web
-      cp -r build $CRAFT_PART_INSTALL/web/
+      cp -r build/* $CRAFT_PART_INSTALL/web/
   
   hermes-agent:
     plugin: python
