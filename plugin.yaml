@@ -8,7 +8,7 @@
 # Control Tower so the user knows where to access the app.
 
 app:
-  name: "hermes-agent"
+  name: "hermes"
   version: "0.12.0"
 
 config:

@@ -1,130 +1,114 @@
 #!/bin/sh -e
 
-# This hook runs when 'snap set' is called or during installation.
-# It reads settings from the snap configuration and updates the Hermes environment/config.
+# ─────────────────────────────────────────────────────────────────────────────
+# snap/hooks/configure — runs on every 'snap set hermes ...'
+#
+# Bridges snap configuration to hermes' own 'config set' command, which
+# automatically routes API keys to .env and settings to config.yaml.
+# ─────────────────────────────────────────────────────────────────────────────
 
-CONFIG_FILE="$SNAP_USER_COMMON/config.yaml"
-ENV_FILE="$SNAP_USER_COMMON/.env"
+# Point HERMES_HOME at the snap-writable common directory so hermes writes
+# config.yaml and .env to /var/snap/hermes/common/
+export HERMES_HOME="$SNAP_COMMON"
+export PATH="$SNAP/bin:$SNAP/usr/bin:$PATH"
 
-# Ensure the directory exists
-mkdir -p "$SNAP_USER_COMMON"
+# Ensure the hermes home directory exists
+mkdir -p "$SNAP_COMMON"
 
-# Helper to update key-value pairs in .env
-update_env() {
-    key=$1
-    val_key=$2
-    value=$(snapctl get "$val_key")
+# Helper: read a snap key and pass it to 'hermes config set'
+# Usage: apply_config <snap-key> <hermes-config-key>
+apply_config() {
+    snap_key="$1"
+    hermes_key="$2"
+    value=$(snapctl get "$snap_key")
     if [ -n "$value" ]; then
-        if grep -q "^$key=" "$ENV_FILE" 2>/dev/null; then
-            # Escape value for sed
-            escaped_value=$(echo "$value" | sed 's/[&/]/\\&/g')
-            sed -i "s|^$key=.*|$key=$escaped_value|" "$ENV_FILE"
-        else
-            echo "$key=$value" >> "$ENV_FILE"
-        fi
+        "$SNAP/bin/hermes" config set "$hermes_key" "$value" 2>/dev/null || true
     fi
 }
 
-# Helper to update config.yaml (very basic append/replace for shell)
-update_config() {
-    key=$1
-    val_key=$2
-    value=$(snapctl get "$val_key")
-    if [ -n "$value" ]; then
-        if [ ! -f "$CONFIG_FILE" ]; then
-            echo "model: \"\"" > "$CONFIG_FILE"
-        fi
-        if grep -q "^$key:" "$CONFIG_FILE" 2>/dev/null; then
-             # Simple replace for top-level keys
-             sed -i "s|^$key:.*|$key: \"$value\"|" "$CONFIG_FILE"
-        else
-             echo "$key: \"$value\"" >> "$CONFIG_FILE"
-        fi
-    fi
-}
+# ─────────────────────────────────────────────────────────────────────────────
+# 1. LLM Provider API Keys → .env
+# ─────────────────────────────────────────────────────────────────────────────
+apply_config "openai-api-key"       "OPENAI_API_KEY"
+apply_config "openai-base-url"      "OPENAI_BASE_URL"
+apply_config "openrouter-api-key"   "OPENROUTER_API_KEY"
+apply_config "anthropic-api-key"    "ANTHROPIC_API_KEY"
+apply_config "gemini-api-key"       "GEMINI_API_KEY"
+apply_config "deepseek-api-key"     "DEEPSEEK_API_KEY"
+apply_config "xai-api-key"          "XAI_API_KEY"
+apply_config "ollama-base-url"      "OLLAMA_BASE_URL"
 
-# 1. Main LLM Providers
-update_env "OPENAI_API_KEY" "openai-api-key"
-update_env "OPENAI_BASE_URL" "openai-base-url"
-update_env "ANTHROPIC_API_KEY" "anthropic-api-key"
-update_env "GEMINI_API_KEY" "gemini-api-key"
-update_env "DEEPSEEK_API_KEY" "deepseek-api-key"
-update_env "XAI_API_KEY" "xai-api-key"
-update_env "OLLAMA_BASE_URL" "ollama-base-url"
+# ─────────────────────────────────────────────────────────────────────────────
+# 2. Tool API Keys → .env
+# ─────────────────────────────────────────────────────────────────────────────
+apply_config "exa-api-key"              "EXA_API_KEY"
+apply_config "tavily-api-key"           "TAVILY_API_KEY"
+apply_config "firecrawl-api-key"        "FIRECRAWL_API_KEY"
+apply_config "browserbase-api-key"      "BROWSERBASE_API_KEY"
+apply_config "browserbase-project-id"   "BROWSERBASE_PROJECT_ID"
 
-# 2. Tool APIs
-update_env "EXA_API_KEY" "exa-api-key"
-update_env "TAVILY_API_KEY" "tavily-api-key"
-update_env "FIRECRAWL_API_KEY" "firecrawl-api-key"
-update_env "BROWSERBASE_API_KEY" "browserbase-api-key"
-update_env "BROWSERBASE_PROJECT_ID" "browserbase-project-id"
+# ─────────────────────────────────────────────────────────────────────────────
+# 3. Messaging Platform Tokens → .env
+# ─────────────────────────────────────────────────────────────────────────────
+apply_config "telegram-bot-token"       "TELEGRAM_BOT_TOKEN"
+apply_config "telegram-allowed-users"   "TELEGRAM_ALLOWED_USERS"
+apply_config "discord-bot-token"        "DISCORD_BOT_TOKEN"
+apply_config "discord-allowed-users"    "DISCORD_ALLOWED_USERS"
+apply_config "slack-bot-token"          "SLACK_BOT_TOKEN"
+apply_config "slack-app-token"          "SLACK_APP_TOKEN"
 
-# 3. Messaging Platforms
-update_env "TELEGRAM_BOT_TOKEN" "telegram-bot-token"
-update_env "TELEGRAM_ALLOWED_USERS" "telegram-allowed-users"
-update_env "DISCORD_BOT_TOKEN" "discord-bot-token"
-update_env "DISCORD_ALLOWED_USERS" "discord-allowed-users"
-update_env "SLACK_BOT_TOKEN" "slack-bot-token"
-update_env "SLACK_APP_TOKEN" "slack-app-token"
+# ─────────────────────────────────────────────────────────────────────────────
+# 4. Model & Settings → config.yaml
+# ─────────────────────────────────────────────────────────────────────────────
+apply_config "model"            "model"
+apply_config "model-provider"   "model.provider"
+apply_config "model-name"       "model.name"
+apply_config "personality"      "personality"
+apply_config "log-level"        "logging.level"
 
-# 4. Global Settings (config.yaml)
-update_config "model" "model"
-update_config "personality" "personality"
+# ─────────────────────────────────────────────────────────────────────────────
+# 5. File Permissions
+# Readable by all users on this device (isolated edge node, no multi-user)
+# ─────────────────────────────────────────────────────────────────────────────
+chmod 644 "$SNAP_COMMON/.env" 2>/dev/null || true
+chmod 644 "$SNAP_COMMON/config.yaml" 2>/dev/null || true
 
-# 5. Service Control
-# Allows enabling/disabling background services via 'snap set'
-# Valid values: "enabled", "disabled"
+# ─────────────────────────────────────────────────────────────────────────────
+# 6. Service Control
+# ─────────────────────────────────────────────────────────────────────────────
 AGENT_SERVICE=$(snapctl get agent-service)
 if [ "$AGENT_SERVICE" = "enabled" ]; then
-    snapctl start --enable hermes-agent.agent
+    snapctl start --enable hermes.agent
 elif [ "$AGENT_SERVICE" = "disabled" ]; then
-    snapctl stop --disable hermes-agent.agent
+    snapctl stop --disable hermes.agent
 fi
 
 ACP_SERVICE=$(snapctl get acp-service)
 if [ "$ACP_SERVICE" = "enabled" ]; then
-    snapctl start --enable hermes-agent.acp
+    snapctl start --enable hermes.acp
 elif [ "$ACP_SERVICE" = "disabled" ]; then
-    snapctl stop --disable hermes-agent.acp
+    snapctl stop --disable hermes.acp
 fi
 
 # Dashboard is the ONLY user interface — default to enabled on first install
 DASHBOARD_SERVICE=$(snapctl get dashboard-service)
 if [ -z "$DASHBOARD_SERVICE" ]; then
-    # First install: no value set yet — enable by default
     DASHBOARD_SERVICE="enabled"
     snapctl set dashboard-service=enabled
 fi
 if [ "$DASHBOARD_SERVICE" = "enabled" ]; then
-    snapctl start --enable hermes-agent.dashboard
+    snapctl start --enable hermes.dashboard
 elif [ "$DASHBOARD_SERVICE" = "disabled" ]; then
-    snapctl stop --disable hermes-agent.dashboard
+    snapctl stop --disable hermes.dashboard
 fi
 
-# Handle nested config like logging.level (simplified as top-level if needed or skipped for now)
-LOG_LEVEL=$(snapctl get log-level)
-if [ -n "$LOG_LEVEL" ]; then
-    # Ensure logging section exists
-    if ! grep -q "^logging:" "$CONFIG_FILE" 2>/dev/null; then
-        echo "logging:" >> "$CONFIG_FILE"
-        echo "  level: \"$LOG_LEVEL\"" >> "$CONFIG_FILE"
-    else
-        # This is a bit risky with sed in multi-line yaml, 
-        # but works if logging is at the end or uniquely identified.
-        sed -i "/^logging:/,/^[^ ]/ s/level:.*/level: \"$LOG_LEVEL\"/" "$CONFIG_FILE"
-    fi
-fi
-
-# Ensure files have proper permissions inside the snap area
-chmod 600 "$ENV_FILE" 2>/dev/null || true
-
-# 6. CT Engine Integration
-# Auto-enable ct-engine sidecar when a callback URL is configured
+# ─────────────────────────────────────────────────────────────────────────────
+# 7. CT Engine Integration
+# ─────────────────────────────────────────────────────────────────────────────
 CT_CALLBACK_URL=$(snapctl get ct-callback-url)
 if [ -n "$CT_CALLBACK_URL" ]; then
-    snapctl start --enable hermes-agent.ct-engine 2>/dev/null || true
-    # Restart ct-engine so it picks up the new config via snapctl
-    snapctl restart hermes-agent.ct-engine 2>/dev/null || true
+    snapctl start --enable hermes.ct-engine 2>/dev/null || true
+    snapctl restart hermes.ct-engine 2>/dev/null || true
 fi
 
-echo "Hermes Snap configuration successfully updated via hook."
+echo "Hermes configuration updated."

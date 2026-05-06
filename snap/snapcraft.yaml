@@ -1,4 +1,4 @@
-name: hermes-agent
+name: hermes
 base: core24
 version: '0.12.0'
 summary: The self-improving AI agent
@@ -33,7 +33,6 @@ apps:
     command: bin/hermes-wrapper hermes-agent
     daemon: simple
     install-mode: disable
-    aliases: [hermes-agent]
     plugs:
       - network
       - network-bind
@@ -104,7 +103,7 @@ parts:
       mkdir -p $CRAFT_PART_INSTALL/hermes_cli/web_dist
       cp -r ../hermes_cli/web_dist/* $CRAFT_PART_INSTALL/hermes_cli/web_dist/
   
-  hermes-agent:
+  hermes:
     plugin: python
     after: [web-frontend]
     source: .

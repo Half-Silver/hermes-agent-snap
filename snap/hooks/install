@@ -1,10 +1,23 @@
-#!/bin/sh
+#!/bin/sh -e
 
-# Initialize default configuration
-# This ensures 'snap get hermes-agent' works immediately after installation
+# ─────────────────────────────────────────────────────────────────────────────
+# snap/hooks/install — runs once on first install
+#
+# Creates the HERMES_HOME directory, seeds empty config files, and sets
+# default snap configuration keys so 'snap get hermes' works immediately.
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Create the hermes home directory with empty config files
+mkdir -p "$SNAP_COMMON"
+touch "$SNAP_COMMON/.env"
+touch "$SNAP_COMMON/config.yaml"
+chmod 644 "$SNAP_COMMON/.env"
+chmod 644 "$SNAP_COMMON/config.yaml"
+
+# Set default snap configuration keys
 snapctl set agent-service="disabled"
 snapctl set acp-service="disabled"
-snapctl set dashboard-service="disabled"
+snapctl set dashboard-service="enabled"
 snapctl set model="gpt-4o"
 snapctl set log-level="info"
 
@@ -14,11 +27,13 @@ snapctl set ct-snap-name=""
 snapctl set ct-node-id=""
 snapctl set ct-deployment-id=""
 
-echo "hermes-agent installed successfully"
-
-# Inform the user about the dot-hermes interface if they want to share data with the host
-echo "Hermes Agent installed. To allow access to your home directory and ~/.hermes, run:"
-echo "  snap connect hermes-agent:home"
-echo "  snap connect hermes-agent:dot-hermes"
-echo "  snap connect hermes-agent:ssh-keys"
-echo "  snap connect hermes-agent:removable-media"
+echo "Hermes installed successfully."
+echo ""
+echo "Configure via:  sudo snap set hermes openrouter-api-key=sk-or-..."
+echo "Dashboard:      http://<device-ip>:9119"
+echo ""
+echo "Optional interface connections:"
+echo "  snap connect hermes:home"
+echo "  snap connect hermes:dot-hermes"
+echo "  snap connect hermes:ssh-keys"
+echo "  snap connect hermes:removable-media"
