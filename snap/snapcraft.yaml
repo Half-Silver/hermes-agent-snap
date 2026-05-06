@@ -78,14 +78,14 @@ parts:
     source: ../all_snap_plugin
     organize:
       src/ct_engine.py: bin/ct-engine
-      docs: docs/plugin
-      examples: examples/plugin
+      docs: plugin-docs
+      examples: plugin-examples
     stage:
       - bin/ct-engine
-      - docs/plugin
-      - docs/plugin/**
-      - examples/plugin
-      - examples/plugin/**
+      - plugin-docs
+      - plugin-docs/**
+      - plugin-examples
+      - plugin-examples/**
 
   web-frontend:
     plugin: npm
