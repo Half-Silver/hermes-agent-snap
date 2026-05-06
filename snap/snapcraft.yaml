@@ -33,6 +33,7 @@ apps:
     command: bin/hermes-wrapper hermes-agent
     daemon: simple
     install-mode: disable
+    post-stop: bin/hermes-wrapper stop-message
     aliases: [hermes-agent]
     plugs:
       - network
@@ -45,16 +46,23 @@ apps:
     command: bin/hermes-wrapper hermes-acp
     daemon: simple
     install-mode: disable
+    post-stop: bin/hermes-wrapper stop-message
     aliases: [hermes-acp]
     plugs:
       - network
       - network-bind
       - home
       - dot-hermes
+  ct-engine:
+    command: bin/ct-engine
+    plugs:
+      - network
+      - network-bind
   dashboard:
-    command: bin/hermes-wrapper hermes dashboard --host 0.0.0.0
+    command: bin/hermes-wrapper dashboard-service
     daemon: simple
     install-mode: disable
+    post-stop: bin/hermes-wrapper stop-message
     plugs:
       - network
       - network-bind
@@ -68,6 +76,14 @@ plugs:
       - $HOME/.hermes
 
 parts:
+  all-snap-plugin:
+    plugin: dump
+    source: ../all_snap_plugin
+    organize:
+      src/ct_engine.py: bin/ct-engine
+      docs: docs/plugin
+      examples: examples/plugin
+
   web-frontend:
     plugin: npm
     source: web/
