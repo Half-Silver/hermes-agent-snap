@@ -112,4 +112,13 @@ fi
 # Ensure files have proper permissions inside the snap area
 chmod 600 "$ENV_FILE" 2>/dev/null || true
 
+# 6. CT Engine Integration
+# Auto-enable ct-engine sidecar when a callback URL is configured
+CT_CALLBACK_URL=$(snapctl get ct-callback-url)
+if [ -n "$CT_CALLBACK_URL" ]; then
+    snapctl start --enable hermes-agent.ct-engine 2>/dev/null || true
+    # Restart ct-engine so it picks up the new config via snapctl
+    snapctl restart hermes-agent.ct-engine 2>/dev/null || true
+fi
+
 echo "Hermes Snap configuration successfully updated via hook."

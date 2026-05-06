@@ -52,7 +52,9 @@ apps:
       - home
       - dot-hermes
   ct-engine:
-    command: bin/ct-engine
+    command: bin/ct-engine run
+    daemon: simple
+    install-mode: disable
     plugs:
       - network
       - network-bind

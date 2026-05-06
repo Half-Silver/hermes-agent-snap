@@ -7,7 +7,12 @@ snapctl set acp-service="disabled"
 snapctl set dashboard-service="disabled"
 snapctl set model="gpt-4o"
 snapctl set log-level="info"
+
+# CT integration defaults (empty until configured by Control Tower)
 snapctl set ct-callback-url=""
+snapctl set ct-snap-name=""
+snapctl set ct-node-id=""
+snapctl set ct-deployment-id=""
 
 echo "hermes-agent installed successfully"
 

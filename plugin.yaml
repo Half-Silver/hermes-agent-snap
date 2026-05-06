@@ -3,25 +3,21 @@ app:
   version: "0.12.0"
 
 config:
-  # LLM Keys
-  openai-api-key: { required: false, type: "string", default: "" }
-  anthropic-api-key: { required: false, type: "string", default: "" }
-  gemini-api-key: { required: false, type: "string", default: "" }
-  
-  # Agent Settings
   model: { required: false, type: "string", default: "gpt-4o" }
   personality: { required: false, type: "string", default: "Helpful assistant" }
-  
-  # Service Control
+  log-level: { required: false, type: "string", default: "info" }
   agent-service: { required: false, type: "string", default: "disabled" }
   acp-service: { required: false, type: "string", default: "disabled" }
   dashboard-service: { required: false, type: "string", default: "disabled" }
 
+# Sidecar mode: ct-engine runs alongside the app daemons and only sends
+# status callbacks to the Control Tower. It does NOT launch the app itself.
 run:
-  command: "bin/hermes-wrapper hermes-agent"
-  workdir: "$SNAP_COMMON"
+  command: ""
 
 output:
   mode: "logs"
   interval: 5
-  event_name: "agent_status"
+  initial_event: "message_initial"
+  periodic_event: "message"
+  stop_event: "deployment_stop"
