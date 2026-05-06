@@ -51,6 +51,15 @@ apps:
       - network-bind
       - home
       - dot-hermes
+  dashboard:
+    command: bin/hermes-wrapper hermes dashboard --host 0.0.0.0
+    daemon: simple
+    install-mode: disable
+    plugs:
+      - network
+      - network-bind
+      - home
+      - dot-hermes
 
 plugs:
   dot-hermes:

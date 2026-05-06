@@ -23,6 +23,7 @@ You can enable or disable background services. By default, they are disabled.
 |---------|----------------|-----------------|
 | **Background Agent** | `sudo snap set hermes-agent agent-service=enabled` | `sudo snap set hermes-agent agent-service=disabled` |
 | **ACP Server** | `sudo snap set hermes-agent acp-service=enabled` | `sudo snap set hermes-agent acp-service=disabled` |
+| **Dashboard (Web UI)** | `sudo snap set hermes-agent dashboard-service=enabled` | `sudo snap set hermes-agent dashboard-service=disabled` |
 
 Check status: `snap services hermes-agent`
 View logs: `sudo snap logs -f hermes-agent.agent`

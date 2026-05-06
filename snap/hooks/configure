@@ -88,6 +88,13 @@ elif [ "$ACP_SERVICE" = "disabled" ]; then
     snapctl stop --disable hermes-agent.acp
 fi
 
+DASHBOARD_SERVICE=$(snapctl get dashboard-service)
+if [ "$DASHBOARD_SERVICE" = "enabled" ]; then
+    snapctl start --enable hermes-agent.dashboard
+elif [ "$DASHBOARD_SERVICE" = "disabled" ]; then
+    snapctl stop --disable hermes-agent.dashboard
+fi
+
 # Handle nested config like logging.level (simplified as top-level if needed or skipped for now)
 LOG_LEVEL=$(snapctl get log-level)
 if [ -n "$LOG_LEVEL" ]; then
