@@ -45,7 +45,7 @@ run:
 # Sidecar status: this command's output becomes the callback message
 # It discovers the local IP and reports the dashboard URL
 sidecar:
-  status_command: "printf 'dashboard: http://%s:9119\n' \"$(hostname -I | awk '{print $1}')\""
+  status_command: hostname -I | awk '{print "dashboard: http://" $1 ":9119"}'
 
 output:
   mode: "logs"
