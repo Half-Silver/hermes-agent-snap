@@ -33,7 +33,6 @@ apps:
     command: bin/hermes-wrapper hermes-agent
     daemon: simple
     install-mode: disable
-    post-stop: bin/hermes-wrapper stop-message
     aliases: [hermes-agent]
     plugs:
       - network
@@ -46,7 +45,6 @@ apps:
     command: bin/hermes-wrapper hermes-acp
     daemon: simple
     install-mode: disable
-    post-stop: bin/hermes-wrapper stop-message
     aliases: [hermes-acp]
     plugs:
       - network
@@ -62,7 +60,6 @@ apps:
     command: bin/hermes-wrapper dashboard-service
     daemon: simple
     install-mode: disable
-    post-stop: bin/hermes-wrapper stop-message
     plugs:
       - network
       - network-bind

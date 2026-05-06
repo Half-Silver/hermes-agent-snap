@@ -10,35 +10,43 @@ export CAMOUFOX_DIR="$SNAP/usr/share/camoufox"
 export HERMES_WEB_DIST="$SNAP/hermes_cli/web_dist"
 
 # Ensure the Snap's bin and usr/bin are at the front of the PATH
-# This ensures bundled node, git, ripgrep, etc. are found first.
 export PATH="$SNAP/bin:$SNAP/usr/bin:$PATH"
 
 # Set HERMES_HOME to a writable location in the Snap's user data
-# This is where config.yaml, .env, and skills will be stored.
 export HERMES_HOME="$SNAP_USER_COMMON"
 
 # If the user has a .hermes in their home, and the dot-hermes plug is connected,
-# we might want to prioritize it, but Snap's strict confinement usually 
-# makes $SNAP_USER_COMMON a better default for persistence across updates.
+# we might want to prioritize it.
 if [ -d "$HOME/.hermes" ]; then
     export HERMES_HOME_PERSISTENT="$HOME/.hermes"
 fi
 
+# Define the stop message handler
+# This function is triggered by SIGTERM (from snap stop)
+handle_stop() {
+    echo "got cmd to stop, goodbye!"
+    # Ensure the stop message is emitted, then allow exit
+    exit 0
+}
+
+# Trap SIGTERM for background services
+# This ensures the goodbye message is printed when systemd kills the wrapper
+trap handle_stop SIGTERM
+
 # Handle custom service wrappers
 if [ "$1" = "dashboard-service" ]; then
     # Try to get the local IP, fallback to 0.0.0.0
-    LOCAL_IP=$(hostname -I | awk '{print $1}')
+    LOCAL_IP=$(hostname -I 2>/dev/null | awk '{print $1}')
     if [ -z "$LOCAL_IP" ]; then
         LOCAL_IP="0.0.0.0"
     fi
     echo "the agent web ui is live at http://$LOCAL_IP:9119"
-    exec "$SNAP/bin/hermes" dashboard --host 0.0.0.0
-fi
-
-if [ "$1" = "stop-message" ]; then
-    echo "got cmd to stop, goodbye!"
+    "$SNAP/bin/hermes" dashboard --host 0.0.0.0 &
+    wait $!
     exit 0
 fi
 
-# Run the requested command
-exec "$SNAP/bin/$@"
+# Run the requested command in the background so the trap can catch signals
+# 'exec' would replace the shell and lose the trap, so we run & and wait
+"$SNAP/bin/$@" &
+wait $!
