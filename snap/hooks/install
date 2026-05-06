@@ -1,5 +1,14 @@
 #!/bin/sh
 
+# Initialize default configuration
+# This ensures 'snap get hermes-agent' works immediately after installation
+snapctl set agent-service="disabled"
+snapctl set acp-service="disabled"
+snapctl set dashboard-service="disabled"
+snapctl set model="gpt-4o"
+snapctl set log-level="info"
+snapctl set ct-callback-url=""
+
 echo "hermes-agent installed successfully"
 
 # Inform the user about the dot-hermes interface if they want to share data with the host

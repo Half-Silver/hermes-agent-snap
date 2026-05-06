@@ -1,0 +1,27 @@
+app:
+  name: "hermes-agent"
+  version: "0.12.0"
+
+config:
+  # LLM Keys
+  openai-api-key: { required: false, type: "string", default: "" }
+  anthropic-api-key: { required: false, type: "string", default: "" }
+  gemini-api-key: { required: false, type: "string", default: "" }
+  
+  # Agent Settings
+  model: { required: false, type: "string", default: "gpt-4o" }
+  personality: { required: false, type: "string", default: "Helpful assistant" }
+  
+  # Service Control
+  agent-service: { required: false, type: "string", default: "disabled" }
+  acp-service: { required: false, type: "string", default: "disabled" }
+  dashboard-service: { required: false, type: "string", default: "disabled" }
+
+run:
+  command: "bin/hermes-wrapper hermes-agent"
+  workdir: "$SNAP_COMMON"
+
+output:
+  mode: "logs"
+  interval: 5
+  event_name: "agent_status"

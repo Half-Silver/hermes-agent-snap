@@ -178,6 +178,10 @@ parts:
 
   wrappers:
     plugin: dump
-    source: snap/local
+    source: .
     organize:
-      hermes-wrapper: bin/hermes-wrapper
+      snap/local/hermes-wrapper: bin/hermes-wrapper
+      plugin.yaml: plugin.yaml
+    stage:
+      - bin/hermes-wrapper
+      - plugin.yaml
