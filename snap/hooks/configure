@@ -88,7 +88,13 @@ elif [ "$ACP_SERVICE" = "disabled" ]; then
     snapctl stop --disable hermes-agent.acp
 fi
 
+# Dashboard is the ONLY user interface — default to enabled on first install
 DASHBOARD_SERVICE=$(snapctl get dashboard-service)
+if [ -z "$DASHBOARD_SERVICE" ]; then
+    # First install: no value set yet — enable by default
+    DASHBOARD_SERVICE="enabled"
+    snapctl set dashboard-service=enabled
+fi
 if [ "$DASHBOARD_SERVICE" = "enabled" ]; then
     snapctl start --enable hermes-agent.dashboard
 elif [ "$DASHBOARD_SERVICE" = "disabled" ]; then

@@ -35,7 +35,7 @@ config:
   dashboard-service:
     required: false
     type: string
-    default: "disabled"
+    default: "enabled"
     description: "Enable/disable the web dashboard"
 
 # No app to launch — ct-engine runs as a sidecar alongside the other services
