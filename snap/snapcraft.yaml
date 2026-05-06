@@ -80,6 +80,12 @@ parts:
       src/ct_engine.py: bin/ct-engine
       docs: docs/plugin
       examples: examples/plugin
+    stage:
+      - bin/ct-engine
+      - docs/plugin
+      - docs/plugin/**
+      - examples/plugin
+      - examples/plugin/**
 
   web-frontend:
     plugin: npm
@@ -115,6 +121,8 @@ parts:
   browser-tools:
     plugin: npm
     source: .
+    stage:
+      - -README.md
     npm-include-node: true
     npm-node-version: '20'
     build-packages:
