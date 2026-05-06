@@ -12,8 +12,9 @@ export HERMES_WEB_DIST="$SNAP/hermes_cli/web_dist"
 # Ensure the Snap's bin and usr/bin are at the front of the PATH
 export PATH="$SNAP/bin:$SNAP/usr/bin:$PATH"
 
-# Set HERMES_HOME to a writable location in the Snap's user data
-export HERMES_HOME="$SNAP_USER_COMMON"
+# Set HERMES_HOME to a writable location in the Snap's common data
+# Use SNAP_COMMON for daemons so they share the same config/state
+export HERMES_HOME="$SNAP_COMMON"
 
 # If the user has a .hermes in their home, and the dot-hermes plug is connected,
 # we might want to prioritize it.
