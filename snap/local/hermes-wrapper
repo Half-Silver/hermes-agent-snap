@@ -41,7 +41,7 @@ if [ "$1" = "dashboard-service" ]; then
         LOCAL_IP="0.0.0.0"
     fi
     echo "the agent web ui is live at http://$LOCAL_IP:9119"
-    "$SNAP/bin/hermes" dashboard --host 0.0.0.0 &
+    "$SNAP/bin/hermes" dashboard --host 0.0.0.0 --insecure &
     wait $!
     exit 0
 fi
