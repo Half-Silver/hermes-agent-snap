@@ -1,4 +1,4 @@
-name: hermes
+name: all-dev-hermesagent
 base: core24
 version: '0.12.0'
 summary: The self-improving AI agent
@@ -20,8 +20,8 @@ confinement: strict
 apps:
   hermes:
     command: bin/hermes-wrapper hermes
-    common-id: hermes
-    aliases: [hermes]
+    common-id: all-dev-hermesagent
+    aliases: [hermesagent]
     plugs:
       - network
       - network-bind

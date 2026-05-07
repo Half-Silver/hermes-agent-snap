@@ -4,10 +4,10 @@
 # snap/hooks/install — runs once on first install
 #
 # Creates the HERMES_HOME directory, seeds empty config files, and sets
-# default snap configuration keys so 'snap get hermes' works immediately.
+# default snap configuration keys so 'snap get all-dev-hermesagent' works immediately.
 # ─────────────────────────────────────────────────────────────────────────────
 
-# Create the hermes home directory with empty config files
+# Create the all-dev-hermesagent home directory with empty config files
 mkdir -p "$SNAP_COMMON"
 touch "$SNAP_COMMON/.env"
 touch "$SNAP_COMMON/config.yaml"
@@ -30,11 +30,11 @@ snapctl set ct-deployment-id=""
 
 echo "Hermes installed successfully."
 echo ""
-echo "Configure via:  sudo snap set hermes openrouter-api-key=sk-or-..."
+echo "Configure via:  sudo snap set all-dev-hermesagent openrouter-api-key=sk-or-..."
 echo "Dashboard:      http://<device-ip>:9119"
 echo ""
 echo "Optional interface connections:"
-echo "  snap connect hermes:home"
-echo "  snap connect hermes:dot-hermes"
-echo "  snap connect hermes:ssh-keys"
-echo "  snap connect hermes:removable-media"
+echo "  snap connect all-dev-hermesagent:home"
+echo "  snap connect all-dev-hermesagent:dot-hermes"
+echo "  snap connect all-dev-hermesagent:ssh-keys"
+echo "  snap connect all-dev-hermesagent:removable-media"

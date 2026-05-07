@@ -84,16 +84,16 @@ chmod 644 "$SNAP_COMMON/config.yaml" 2>/dev/null || true
 # ─────────────────────────────────────────────────────────────────────────────
 AGENT_SERVICE=$(snapctl get agent-service)
 if [ "$AGENT_SERVICE" = "enabled" ]; then
-    snapctl start --enable hermes.agent
+    snapctl start --enable all-dev-hermesagent.agent
 elif [ "$AGENT_SERVICE" = "disabled" ]; then
-    snapctl stop --disable hermes.agent
+    snapctl stop --disable all-dev-hermesagent.agent
 fi
 
 ACP_SERVICE=$(snapctl get acp-service)
 if [ "$ACP_SERVICE" = "enabled" ]; then
-    snapctl start --enable hermes.acp
+    snapctl start --enable all-dev-hermesagent.acp
 elif [ "$ACP_SERVICE" = "disabled" ]; then
-    snapctl stop --disable hermes.acp
+    snapctl stop --disable all-dev-hermesagent.acp
 fi
 
 # Dashboard is the ONLY user interface — default to enabled on first install
@@ -103,16 +103,16 @@ if [ -z "$DASHBOARD_SERVICE" ]; then
     snapctl set dashboard-service=enabled
 fi
 if [ "$DASHBOARD_SERVICE" = "enabled" ]; then
-    snapctl start --enable hermes.dashboard
+    snapctl start --enable all-dev-hermesagent.dashboard
 elif [ "$DASHBOARD_SERVICE" = "disabled" ]; then
-    snapctl stop --disable hermes.dashboard
+    snapctl stop --disable all-dev-hermesagent.dashboard
 fi
 
 GATEWAY_SERVICE=$(snapctl get gateway-service)
 if [ "$GATEWAY_SERVICE" = "enabled" ]; then
-    snapctl start --enable hermes.gateway
+    snapctl start --enable all-dev-hermesagent.gateway
 elif [ "$GATEWAY_SERVICE" = "disabled" ]; then
-    snapctl stop --disable hermes.gateway
+    snapctl stop --disable all-dev-hermesagent.gateway
 fi
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -120,8 +120,8 @@ fi
 # ─────────────────────────────────────────────────────────────────────────────
 CT_CALLBACK_URL=$(snapctl get ct-callback-url)
 if [ -n "$CT_CALLBACK_URL" ]; then
-    snapctl start --enable hermes.ct-engine 2>/dev/null || true
-    snapctl restart hermes.ct-engine 2>/dev/null || true
+    snapctl start --enable all-dev-hermesagent.ct-engine 2>/dev/null || true
+    snapctl restart all-dev-hermesagent.ct-engine 2>/dev/null || true
 fi
 
 echo "Hermes configuration updated."
