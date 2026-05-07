@@ -113,7 +113,7 @@ sidecar:
 
 output:
   mode: "logs"
-  interval: 5
+  interval: 0
   initial_event: "message_initial"
-  periodic_event: "message"
   stop_event: "deployment_stop"
+
