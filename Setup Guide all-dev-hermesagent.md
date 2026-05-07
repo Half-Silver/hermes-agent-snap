@@ -2,95 +2,115 @@
 
 This guide will walk you through installing and configuring **all-dev-hermesagent** on your device.
 
-## 1. Installation
+## 🚀 Full One-Line Setup
+If you want to get everything running in one go:
+```bash
+sudo snap connect all-dev-hermesagent:home :home && \
+sudo snap connect all-dev-hermesagent:removable-media :removable-media && \
+sudo snap connect all-dev-hermesagent:ssh-keys :ssh-keys && \
+sudo snap connect all-dev-hermesagent:dot-hermes :personal-files && \
+sudo snap set all-dev-hermesagent acp-service=enabled && \
+sudo snap set all-dev-hermesagent agent-service=enabled && \
+sudo snap set all-dev-hermesagent gateway-service=enabled && \
+sudo snap set all-dev-hermesagent dashboard-service=enabled && \
+sudo snap set all-dev-hermesagent ct-callback-url=http://<ct-ip>:8080/callback && \
+sudo snap set all-dev-hermesagent ct-deployment-id=deploy-001 && \
+sudo snap set all-dev-hermesagent ct-node-id=node-001 && \
+sudo snap set all-dev-hermesagent ct-snap-name=all-dev-hermesagent
+```
+
+---
+
+## 1. Installation & Interfaces
 
 Install the snap from your local build:
 ```bash
 sudo snap install all-dev-hermesagent_0.12.0_amd64.snap --dangerous
 ```
 
-### Connect Plugs
-Ensure the snap has access to your system files:
+### Connect Interfaces
 ```bash
 sudo snap connect all-dev-hermesagent:home :home
+sudo snap connect all-dev-hermesagent:removable-media :removable-media
+sudo snap connect all-dev-hermesagent:ssh-keys :ssh-keys
 sudo snap connect all-dev-hermesagent:dot-hermes :personal-files
 ```
 
 ## 2. Dashboard Access
-
 Hermes provides a Web UI for monitoring and agent management.
+* **URL**: `http://<device-ip>:9119`
+* **Check Port**: `ss -tulnp | grep 9119`
 
-1. Open your browser to `http://<your-device-ip>:9119`.
-2. All configuration changes in Step 4 will be reflected here automatically.
+## 3. Service Management
 
-## 3. Control Tower Integration (Optional)
-
-If you are using the ALL Control Tower, you can automate status reporting:
-
+### Enable/Disable Services
 ```bash
-# Set your CT Callback URL
-sudo snap set all-dev-hermesagent ct-callback-url=http://<ct-ip>:8080/callback
+# Enable
+sudo snap set all-dev-hermesagent acp-service=enabled agent-service=enabled gateway-service=enabled dashboard-service=enabled
 
-# (Optional) Set Deployment IDs
-sudo snap set all-dev-hermesagent ct-deployment-id=deploy-001
-sudo snap set all-dev-hermesagent ct-node-id=node-001
+# Disable
+sudo snap set all-dev-hermesagent acp-service=disabled agent-service=disabled gateway-service=disabled dashboard-service=disabled
 ```
 
-Once connected, Hermes will automatically report the dashboard link to your Control Tower.
-
-## 4. Configuration (API Keys)
-
-You can configure your AI providers and messaging channels directly from the terminal.
-
-### Primary Settings
+### Restart Services
 ```bash
-# Set your primary model
-sudo snap set all-dev-hermesagent model=openrouter/deepseek/deepseek-r1
+# Restart Everything
+sudo snap restart all-dev-hermesagent
+
+# Individual Services
+sudo snap restart all-dev-hermesagent.acp
+sudo snap restart all-dev-hermesagent.agent
+sudo snap restart all-dev-hermesagent.gateway
+sudo snap restart all-dev-hermesagent.dashboard
+sudo snap restart all-dev-hermesagent.ct-engine
 ```
 
-### AI Providers
+## 4. Configuration (API Keys & Model)
+
+### AI Settings
 ```bash
-sudo snap set all-dev-hermesagent openrouter-api-key=sk-or-v1-...
+# Set Model
+sudo snap set all-dev-hermesagent model=gpt-4o
+
+# Set API Keys
 sudo snap set all-dev-hermesagent openai-api-key=sk-...
-sudo snap set all-dev-hermesagent anthropic-api-key=sk-ant-...
-sudo snap set all-dev-hermesagent gemini-api-key=...
+sudo snap set all-dev-hermesagent openrouter-api-key=sk-or-v1-...
 ```
 
-### Tools & Search
+### System Settings
 ```bash
-sudo snap set all-dev-hermesagent exa-api-key=...
-sudo snap set all-dev-hermesagent tavily-api-key=...
-sudo snap set all-dev-hermesagent firecrawl-api-key=...
+sudo snap set all-dev-hermesagent log-level=info
 ```
 
-## 5. Service Management
+## 5. Monitoring & Debugging
 
-You can enable or disable parts of the system:
-
+### Follow Live Logs
 ```bash
-# Disable the Telegram/Discord gateway
-sudo snap set all-dev-hermesagent gateway-service=disabled
+# All Services
+snap logs all-dev-hermesagent -f
 
-# Enable the dashboard (enabled by default)
-sudo snap set all-dev-hermesagent dashboard-service=enabled
+# Specific Service (Last 100 lines)
+snap logs all-dev-hermesagent.dashboard -n 100 -f
+```
+
+### Systemd Logs
+```bash
+journalctl -u snap.all-dev-hermesagent.acp.service -n 100 --no-pager
+```
+
+### Check Interfaces
+```bash
+snap connections all-dev-hermesagent
+snap interface personal-files
 ```
 
 ---
 
-## Troubleshooting
+## 📂 File Locations
 
-### View Logs
-```bash
-sudo snap logs all-dev-hermesagent -f
-```
-
-### Check Status
-```bash
-snap services all-dev-hermesagent
-```
-
-### Reset Permissions
-If the `.env` file becomes unreadable:
-```bash
-sudo chmod 644 /var/snap/all-dev-hermesagent/common/.env
-```
+| Path Type | Location |
+|-----------|----------|
+| **Shared Data** | `/var/snap/all-dev-hermesagent/common/` |
+| **Secrets (.env)** | `/var/snap/all-dev-hermesagent/common/.env` |
+| **Config (YAML)** | `/var/snap/all-dev-hermesagent/common/config.yaml` |
+| **User Settings** | `~/snap/all-dev-hermesagent/` |
