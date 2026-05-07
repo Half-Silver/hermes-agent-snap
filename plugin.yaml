@@ -1,37 +1,15 @@
 # plugin.yaml — Hermes Agent snap manifest for CT Engine
 #
-# Hermes uses the CT Engine in SIDECAR MODE only.
-# No config is delivered at deployment time — the user configures
-# everything via the web dashboard at http://<device-ip>:9119.
-#
-# The CT Engine's job is to relay the dashboard URL back to the
-# Control Tower so the user knows where to access the app.
+# Hermes uses the CT Engine in SIDECAR MODE. 
+# The CT Engine relays the dashboard URL and status back to the Control Tower.
+# All keys defined here can be managed via the Control Tower UI.
 
 app:
   name: "all-dev-hermesagent"
   version: "0.12.0"
 
 config:
-  model:
-    required: false
-    type: string
-    default: "gpt-4o"
-    description: "LLM model to use"
-  log-level:
-    required: false
-    type: string
-    default: "info"
-    description: "Logging level"
-  agent-service:
-    required: false
-    type: string
-    default: "disabled"
-    description: "Enable/disable the agent daemon"
-  acp-service:
-    required: false
-    type: string
-    default: "disabled"
-    description: "Enable/disable the ACP adapter"
+  # --- Service Control ---
   dashboard-service:
     required: false
     type: string
@@ -41,14 +19,95 @@ config:
     required: false
     type: string
     default: "disabled"
-    description: "Enable/disable the messaging gateway"
+    description: "Enable/disable the messaging gateway (Telegram/Discord/Slack)"
+  agent-service:
+    required: false
+    type: string
+    default: "disabled"
+    description: "Enable/disable the autonomous agent daemon"
+  acp-service:
+    required: false
+    type: string
+    default: "disabled"
+    description: "Enable/disable the ACP adapter"
 
-# No app to launch — ct-engine runs as a sidecar alongside the other services
+  # --- LLM Provider Settings ---
+  model:
+    required: false
+    type: string
+    default: "gpt-4o"
+    description: "Full model string (e.g., openrouter/deepseek/deepseek-r1)"
+  model-provider:
+    required: false
+    type: string
+    description: "LLM provider name (openai, openrouter, anthropic, etc.)"
+  model-name:
+    required: false
+    type: string
+    description: "Specific model name"
+  
+  # --- API Keys (Secrets) ---
+  openrouter-api-key:
+    required: false
+    type: string
+    description: "OpenRouter API Key"
+  openai-api-key:
+    required: false
+    type: string
+    description: "OpenAI API Key"
+  anthropic-api-key:
+    required: false
+    type: string
+    description: "Anthropic API Key"
+  gemini-api-key:
+    required: false
+    type: string
+    description: "Google Gemini API Key"
+  deepseek-api-key:
+    required: false
+    type: string
+    description: "DeepSeek API Key"
+  xai-api-key:
+    required: false
+    type: string
+    description: "xAI API Key"
+  
+  # --- Messaging Tokens ---
+  telegram-bot-token:
+    required: false
+    type: string
+    description: "Telegram Bot Token from BotFather"
+  discord-bot-token:
+    required: false
+    type: string
+    description: "Discord Bot Token"
+  
+  # --- Tool API Keys ---
+  exa-api-key:
+    required: false
+    type: string
+    description: "Exa Search API Key"
+  tavily-api-key:
+    required: false
+    type: string
+    description: "Tavily Search API Key"
+  
+  # --- System Settings ---
+  log-level:
+    required: false
+    type: string
+    default: "info"
+    description: "Logging level (debug, info, warning, error)"
+  personality:
+    required: false
+    type: string
+    description: "Custom system prompt for the agent"
+
+# Sidecar mode: the engine doesn't manage the hermes process directly
 run:
   command: ""
 
-# Sidecar status: this command's output becomes the callback message
-# It discovers the local IP and reports the dashboard URL
+# Reports the dashboard URL in every callback
 sidecar:
   status_command: hostname -I | awk '{print "dashboard: http://" $1 ":9119"}'
 
