@@ -72,6 +72,13 @@ apps:
       - network
       - network-bind
       - home
+      - dot-hermes
+
+plugs:
+  dot-hermes:
+    interface: personal-files
+    write:
+      - $HOME/.hermes
 
 parts:
   all-snap-plugin:
