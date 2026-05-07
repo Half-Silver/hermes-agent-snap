@@ -21,7 +21,6 @@ apps:
   hermes:
     command: bin/hermes-wrapper hermes
     common-id: all-dev-hermesagent
-    aliases: [hermesagent]
     plugs:
       - network
       - network-bind
@@ -44,7 +43,6 @@ apps:
     command: bin/hermes-wrapper hermes-acp
     daemon: simple
     install-mode: disable
-    aliases: [hermes-acp]
     plugs:
       - network
       - network-bind
@@ -152,11 +150,10 @@ parts:
       mv $CRAFT_PART_INSTALL/.agent-browser/browsers/* $CRAFT_PART_INSTALL/usr/share/playwright/
       rm -rf $CRAFT_PART_INSTALL/.agent-browser
       
-      # Global install — skip postinstall scripts because camoufox's
-      # 'npx camoufox-js fetch' fails in the snap build environment (exit 127).
-      # Chrome was already installed manually above.
+      # Global install — skip postinstall scripts.
+      # Use --install-links to avoid symlinks pointing outside the snap.
       unset HOME
-      npm install -g --ignore-scripts --prefix $CRAFT_PART_INSTALL $CRAFT_PART_BUILD
+      npm install -g --ignore-scripts --install-links --prefix $CRAFT_PART_INSTALL .
       
       # Bundle Camoufox directory (empty placeholder if fetch isn't available)
       mkdir -p $CRAFT_PART_INSTALL/usr/share/camoufox
