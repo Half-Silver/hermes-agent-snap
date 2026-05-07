@@ -43,18 +43,31 @@ output:
 3. **Execution**: The `ct-engine` starts, reads `plugin.yaml`, and loads the current config via `snapctl`.
 4. **Reporting**: The engine sends a `message_initial` callback to the Control Tower with the Dashboard URL (`http://<ip>:9119`).
 
-## 🛠️ Control Tower JSON Reference
+## 📋 Configuration Template (CT Deployment Payload)
 
-When registering this snap in the Control Tower, use this configuration:
+Use this JSON structure for the deployment request from the Control Tower.
 
 ```json
 {
-  "name": "all-dev-hermesagent",
-  "type": "sidecar",
-  "config": {
-    "model": "gpt-4o",
-    "openrouter-api-key": "sk-or-v1-...",
-    "ct-callback-url": "http://<ct-ip>:8080/callback"
-  }
+  "snaps": [
+    {
+      "name": "all-dev-hermesagent",
+      "refresh": true
+    }
+  ],
+  "snap_config": [
+    {
+      "snap": "all-dev-hermesagent",
+      "settings": {
+        "model": "gpt-4o",
+        "openai-api-key": "<OPENAI_API_KEY>",
+        "openrouter-api-key": "<OPENROUTER_API_KEY>",
+        "ct-node-id": "<ALL_APP_NODE_ID>",
+        "ct-callback-url": "<ALL_APP_CALLBACK_URL>",
+        "ct-deployment-id": "<ALL_APP_DEPLOYMENT_ID>"
+      }
+    }
+  ]
 }
 ```
+
