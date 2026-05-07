@@ -1,54 +1,60 @@
 # Control Tower Integration — all-dev-hermesagent
 
-This document defines the input schema and configuration required for the **ALL Control Tower** to manage this snap.
+This snap uses the **ALL Universal Snap Engine (`ct-engine`)** for seamless Control Tower integration. All app-specific behavior is defined in the `plugin.yaml` manifest.
 
-## 📄 Snap Manifest (JSON)
+## 🏗️ Architecture
 
-Use this JSON when registering the snap in the Control Tower dashboard.
+```text
+all-dev-hermesagent:
+├── ct-engine          ← universal integration engine
+├── plugin.yaml        ← Hermes-specific manifest (defines the UI & config)
+└── hermes (binary)    ← the actual AI agent
+```
+
+## 📄 The Manifest (`plugin.yaml`)
+
+This is the core definition used by the `ct-engine` to bridge the snap to the Control Tower.
+
+```yaml
+app:
+  name: "all-dev-hermesagent"
+  version: "0.12.0"
+
+config:
+  # --- Provider Keys ---
+  openrouter-api-key: { required: false, type: "string" }
+  openai-api-key: { required: false, type: "string" }
+  anthropic-api-key: { required: false, type: "string" }
+  
+  # --- Settings ---
+  model: { required: false, type: "string", default: "gpt-4o" }
+  log-level: { required: false, type: "string", default: "info" }
+
+output:
+  mode: "logs"
+  interval: 0  # Sidecar mode (reports status on startup)
+  initial_event: "message_initial"
+```
+
+## 📡 How it works
+
+1. **Deployment**: Control Tower sends a `snap set` command to the node.
+2. **Configuration**: The snap's `configure` hook updates the internal `.env`.
+3. **Execution**: The `ct-engine` starts, reads `plugin.yaml`, and loads the current config via `snapctl`.
+4. **Reporting**: The engine sends a `message_initial` callback to the Control Tower with the Dashboard URL (`http://<ip>:9119`).
+
+## 🛠️ Control Tower JSON Reference
+
+When registering this snap in the Control Tower, use this configuration:
 
 ```json
 {
   "name": "all-dev-hermesagent",
-  "version": "0.12.0",
   "type": "sidecar",
   "config": {
     "model": "gpt-4o",
-    "log-level": "info",
-    "openai-api-key": "",
-    "openrouter-api-key": "",
-    "telegram-bot-token": "",
-    "telegram-allowed-users": "",
+    "openrouter-api-key": "sk-or-v1-...",
     "ct-callback-url": "http://<ct-ip>:8080/callback"
-  },
-  "output": {
-    "mode": "logs",
-    "interval": 0,
-    "initial_event": "message_initial",
-    "stop_event": "deployment_stop"
   }
 }
 ```
-
-## 🛠️ Input Schema (Configuration)
-
-| Key | Type | Description |
-|-----|------|-------------|
-| `model` | `string` | Primary AI model (e.g., `gpt-4o`, `openrouter/deepseek/deepseek-r1`) |
-| `openai-api-key` | `string` | OpenAI API Key (starts with `sk-`) |
-| `openrouter-api-key` | `string` | OpenRouter API Key (starts with `sk-or-v1-`) |
-| `telegram-bot-token` | `string` | Telegram Bot Token from @BotFather |
-| `telegram-allowed-users` | `string` | Comma-separated list of Telegram User IDs |
-| `ct-callback-url` | `string` | The Control Tower callback URL for status reporting |
-
-## 📡 Status Reporting (Sidecar)
-
-Hermes reports its status via periodic callbacks to the `ct-callback-url`. 
-
-### Initial Message
-Upon startup, Hermes sends a `message_initial` event containing:
-- Dashboard URL (`http://<ip>:9119`)
-- List of enabled/disabled services.
-- Masked API key verification.
-
-### Shutdown
-Upon stopping, Hermes sends a `deployment_stop` event to notify the Control Tower of graceful closure.
