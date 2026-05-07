@@ -37,6 +37,11 @@ config:
     type: string
     default: "enabled"
     description: "Enable/disable the web dashboard"
+  gateway-service:
+    required: false
+    type: string
+    default: "disabled"
+    description: "Enable/disable the messaging gateway"
 
 # No app to launch — ct-engine runs as a sidecar alongside the other services
 run:

@@ -12,8 +12,15 @@
 export HERMES_HOME="$SNAP_COMMON"
 export PATH="$SNAP/bin:$SNAP/usr/bin:$PATH"
 
-# Ensure the hermes home directory exists
+# ─────────────────────────────────────────────────────────────────────────────
+# 0. Ensure files exist with correct permissions BEFORE any hermes calls
+#    (hermes reads .env on import — it must be readable by all users)
+# ─────────────────────────────────────────────────────────────────────────────
 mkdir -p "$SNAP_COMMON"
+touch "$SNAP_COMMON/.env"
+touch "$SNAP_COMMON/config.yaml"
+chmod 644 "$SNAP_COMMON/.env"
+chmod 644 "$SNAP_COMMON/config.yaml"
 
 # Helper: read a snap key and pass it to 'hermes config set'
 # Usage: apply_config <snap-key> <hermes-config-key>
@@ -67,8 +74,7 @@ apply_config "personality"      "personality"
 apply_config "log-level"        "logging.level"
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 5. File Permissions
-# Readable by all users on this device (isolated edge node, no multi-user)
+# 5. Re-apply permissions after config writes (hermes config set may chmod)
 # ─────────────────────────────────────────────────────────────────────────────
 chmod 644 "$SNAP_COMMON/.env" 2>/dev/null || true
 chmod 644 "$SNAP_COMMON/config.yaml" 2>/dev/null || true
@@ -100,6 +106,13 @@ if [ "$DASHBOARD_SERVICE" = "enabled" ]; then
     snapctl start --enable hermes.dashboard
 elif [ "$DASHBOARD_SERVICE" = "disabled" ]; then
     snapctl stop --disable hermes.dashboard
+fi
+
+GATEWAY_SERVICE=$(snapctl get gateway-service)
+if [ "$GATEWAY_SERVICE" = "enabled" ]; then
+    snapctl start --enable hermes.gateway
+elif [ "$GATEWAY_SERVICE" = "disabled" ]; then
+    snapctl stop --disable hermes.gateway
 fi
 
 # ─────────────────────────────────────────────────────────────────────────────

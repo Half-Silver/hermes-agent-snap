@@ -66,6 +66,15 @@ apps:
       - network-bind
       - home
       - dot-hermes
+  gateway:
+    command: bin/hermes-wrapper gateway-service
+    daemon: simple
+    install-mode: disable
+    plugs:
+      - network
+      - network-bind
+      - home
+      - dot-hermes
 
 plugs:
   dot-hermes:

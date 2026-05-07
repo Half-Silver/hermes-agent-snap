@@ -18,6 +18,7 @@ chmod 644 "$SNAP_COMMON/config.yaml"
 snapctl set agent-service="disabled"
 snapctl set acp-service="disabled"
 snapctl set dashboard-service="enabled"
+snapctl set gateway-service="disabled"
 snapctl set model="gpt-4o"
 snapctl set log-level="info"
 

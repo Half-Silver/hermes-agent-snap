@@ -73,6 +73,8 @@ sudo snap set hermes model=openrouter/deepseek/deepseek-r1
 |---|---|
 | `sudo snap set hermes dashboard-service=enabled` | Start the web dashboard (default: **enabled**) |
 | `sudo snap set hermes dashboard-service=disabled` | Stop the web dashboard |
+| `sudo snap set hermes gateway-service=enabled` | Start the messaging gateway (Telegram/Discord/Slack) |
+| `sudo snap set hermes gateway-service=disabled` | Stop the messaging gateway |
 | `sudo snap set hermes agent-service=enabled` | Start the AI agent daemon |
 | `sudo snap set hermes agent-service=disabled` | Stop the AI agent daemon |
 | `sudo snap set hermes acp-service=enabled` | Start the ACP adapter |
@@ -105,6 +107,7 @@ These are set automatically by the Control Tower during deployment:
 | Service | Command |
 |---|---|
 | `snap logs hermes.dashboard` | Dashboard logs |
+| `snap logs hermes.gateway` | Messaging gateway logs |
 | `snap logs hermes.agent` | Agent daemon logs |
 | `snap logs hermes.acp` | ACP adapter logs |
 | `snap logs hermes.ct-engine` | CT Engine sidecar logs |
