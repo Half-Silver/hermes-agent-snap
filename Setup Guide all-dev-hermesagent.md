@@ -19,6 +19,26 @@ sudo snap set all-dev-hermesagent ct-node-id=node-001 && \
 sudo snap set all-dev-hermesagent ct-snap-name=all-dev-hermesagent
 ```
 
+### AI Providers & Models
+```bash
+# Set Model Provider and Name
+sudo snap set all-dev-hermesagent model-provider=openrouter
+sudo snap set all-dev-hermesagent model-name=minimax/minimax-m2.5:free
+
+# Set API Keys
+sudo snap set all-dev-hermesagent openrouter-api-key=sk-or-v1-...
+sudo snap set all-dev-hermesagent openai-api-key=sk-...
+```
+
+### Messaging Channels
+```bash
+# Set Bot Token
+sudo snap set all-dev-hermesagent telegram-bot-token=8749...bxIk
+
+# Set Multi-User Allowlist (comma-separated)
+sudo snap set all-dev-hermesagent telegram-allowed-users=8295487214,18813613
+```
+
 ---
 
 ## 1. Installation & Interfaces
