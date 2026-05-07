@@ -152,19 +152,14 @@ parts:
       mv $CRAFT_PART_INSTALL/.agent-browser/browsers/* $CRAFT_PART_INSTALL/usr/share/playwright/
       rm -rf $CRAFT_PART_INSTALL/.agent-browser
       
-      # Now run the default build (global install to prefix)
+      # Global install — skip postinstall scripts because camoufox's
+      # 'npx camoufox-js fetch' fails in the snap build environment (exit 127).
+      # Chrome was already installed manually above.
       unset HOME
-      craftctl default
+      npm install -g --ignore-scripts --prefix $CRAFT_PART_INSTALL $CRAFT_PART_BUILD
       
-      # Also bundle Camoufox if possible
-      # Camoufox usually downloads to ~/.cache/camoufox
-      # We'll set CAMOUFOX_DIR to bundle it.
-      export CAMOUFOX_DIR=$CRAFT_PART_INSTALL/usr/share/camoufox
-      mkdir -p $CAMOUFOX_DIR
-      # We don't have a direct 'install' command for camofox in the same way,
-      # but running the help or a dummy command might trigger it.
-      # Skip for now if it's too complex, but let's try.
-      # npx @askjo/camofox-browser --help || true
+      # Bundle Camoufox directory (empty placeholder if fetch isn't available)
+      mkdir -p $CRAFT_PART_INSTALL/usr/share/camoufox
     stage-packages:
       - libnss3
       - libatk1.0-0t64
