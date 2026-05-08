@@ -16,11 +16,7 @@ export PATH="$SNAP/bin:$SNAP/usr/bin:$PATH"
 # Use SNAP_COMMON for daemons so they share the same config/state
 export HERMES_HOME="$SNAP_COMMON"
 
-# If the user has a .hermes in their home, and the dot-hermes plug is connected,
-# we might want to prioritize it.
-if [ -d "$HOME/.hermes" ]; then
-    export HERMES_HOME_PERSISTENT="$HOME/.hermes"
-fi
+
 
 # Define the stop message handler
 # This function is triggered by SIGTERM (from snap stop)
