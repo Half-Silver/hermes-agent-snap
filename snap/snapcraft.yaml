@@ -24,8 +24,6 @@ apps:
     plugs:
       - network
       - network-bind
-      - home
-      - dot-hermes
       - ssh-keys
       - removable-media
   agent:
@@ -35,8 +33,6 @@ apps:
     plugs:
       - network
       - network-bind
-      - home
-      - dot-hermes
       - ssh-keys
       - removable-media
   acp:
@@ -46,8 +42,6 @@ apps:
     plugs:
       - network
       - network-bind
-      - home
-      - dot-hermes
   ct-engine:
     command: bin/ct-engine run
     daemon: simple
@@ -62,8 +56,6 @@ apps:
     plugs:
       - network
       - network-bind
-      - home
-      - dot-hermes
   gateway:
     command: bin/hermes-wrapper gateway-service
     daemon: simple
@@ -71,14 +63,7 @@ apps:
     plugs:
       - network
       - network-bind
-      - home
-      - dot-hermes
 
-plugs:
-  dot-hermes:
-    interface: personal-files
-    write:
-      - $HOME/.hermes
 
 parts:
   all-snap-plugin:
@@ -102,13 +87,13 @@ parts:
     npm-node-version: '20'
     override-build: |
       export NODE_ENV=development
-      npm install -g typescript vite
       npm install --include=dev
       npm run sync-assets
-      tsc -b
-      vite build
+      npx tsc -b
+      npx vite build
       mkdir -p $CRAFT_PART_INSTALL/hermes_cli/web_dist
       cp -r ../hermes_cli/web_dist/* $CRAFT_PART_INSTALL/hermes_cli/web_dist/
+
   
   hermes:
     plugin: python
