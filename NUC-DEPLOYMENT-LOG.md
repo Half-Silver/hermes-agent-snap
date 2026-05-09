@@ -11,11 +11,11 @@ sudo snap install --dangerous all-dev-hermesagent_0.12.0_amd64.snap
 ## 2. Interface Connections
 Required security interfaces were connected manually to grant necessary system permissions:
 ```bash
-sudo snap connect all-dev-hermesagent:home :home
 sudo snap connect all-dev-hermesagent:removable-media :removable-media
 sudo snap connect all-dev-hermesagent:ssh-keys :ssh-keys
-sudo snap connect all-dev-hermesagent:dot-hermes :personal-files
 ```
+
+
 
 ## 3. Service Initialization
 All internal services were enabled to ensure they start automatically on system boot:
