@@ -50,6 +50,14 @@ if [ "$1" = "gateway-service" ]; then
     exit 0
 fi
 
+if [ "$1" = "config-watcher" ]; then
+    # Bridges web-UI config writes (.env/config.yaml) to snap service lifecycle.
+    echo "starting hermes config-watcher (applies web-UI config changes)..."
+    "$SNAP/bin/config-watcher" &
+    wait $!
+    exit 0
+fi
+
 # Run the requested command in the background so the trap can catch signals
 # 'exec' would replace the shell and lose the trap, so we run & and wait
 "$SNAP/bin/$@" &

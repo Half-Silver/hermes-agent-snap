@@ -63,6 +63,14 @@ apps:
     plugs:
       - network
       - network-bind
+  config-watcher:
+    # Applies web-UI config changes: watches $SNAP_COMMON/.env + config.yaml and
+    # reconciles the gateway service (via snapctl) so a token saved in the
+    # dashboard takes effect without `snap set`. Starts on install (no
+    # install-mode: disable); controllable via `snap set … config-watcher-service`.
+    command: bin/hermes-wrapper config-watcher
+    daemon: simple
+    restart-condition: always
 
 
 parts:
@@ -164,11 +172,19 @@ parts:
       - libglut3.12
 
   wrappers:
-    plugin: dump
+    # override-build so the launcher + service-orchestration scripts are staged
+    # into bin/ with explicit executable perms (independent of source-tree perms).
+    plugin: nil
     source: .
-    organize:
-      snap/local/hermes-wrapper: bin/hermes-wrapper
-      plugin.yaml: plugin.yaml
+    override-build: |
+      set -e
+      mkdir -p "$CRAFT_PART_INSTALL/bin"
+      install -m 0755 snap/local/hermes-wrapper     "$CRAFT_PART_INSTALL/bin/hermes-wrapper"
+      install -m 0755 snap/local/config-watcher      "$CRAFT_PART_INSTALL/bin/config-watcher"
+      install -m 0755 snap/local/reconcile-services  "$CRAFT_PART_INSTALL/bin/reconcile-services"
+      install -m 0644 plugin.yaml                     "$CRAFT_PART_INSTALL/plugin.yaml"
     stage:
       - bin/hermes-wrapper
+      - bin/config-watcher
+      - bin/reconcile-services
       - plugin.yaml

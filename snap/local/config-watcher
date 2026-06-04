@@ -1,0 +1,69 @@
+#!/bin/sh
+# ─────────────────────────────────────────────────────────────────────────────
+# snap/local/config-watcher — apply web-UI config changes without `snap set`.
+#
+# On a headless / userless device the operator configures Hermes entirely from
+# the web dashboard (http://<ip>:9119). The dashboard writes API keys/tokens to
+# $SNAP_COMMON/.env and settings to $SNAP_COMMON/config.yaml — but, unlike
+# `snap set`, those writes don't trigger the configure hook, so the gateway is
+# never (re)started to pick them up.
+#
+# This daemon closes that loop: it watches the platform-relevant slice of the
+# config and, on change, runs reconcile-services (which uses snapctl to bring
+# the gateway up/down and reload it). Provider/LLM keys are deliberately NOT
+# watched — the gateway already hot-reloads .env credentials every turn
+# (gateway/run.py:_reload_runtime_env_preserving_config_authority), so changing
+# an OPENROUTER_API_KEY needs no restart and shouldn't flap the service.
+#
+# Polling (mtime-independent content fingerprint) keeps this dependency-free —
+# no inotify-tools needed in the snap.
+# ─────────────────────────────────────────────────────────────────────────────
+set -u
+
+ENV_FILE="${SNAP_COMMON:?}/.env"
+CONFIG_FILE="${SNAP_COMMON}/config.yaml"
+STATE_FILE="${SNAP_COMMON}/.config-watcher.state"
+RECONCILE="${SNAP:?}/bin/reconcile-services"
+
+INTERVAL="${HERMES_WATCH_INTERVAL:-5}"     # seconds between polls
+DEBOUNCE="${HERMES_WATCH_DEBOUNCE:-3}"     # quiescence wait (web UI saves keys one at a time)
+
+log() { echo "[config-watcher] $*"; }
+
+# Clean exit on `snap stop` (SIGTERM) so the daemon doesn't show as failed.
+trap 'log "stopping"; exit 0' TERM INT
+
+# Fingerprint only the config that affects which platforms the gateway connects.
+# Adding/changing/removing any of these triggers a reconcile; provider keys do not.
+fingerprint() {
+    {
+        grep -E '^(TELEGRAM_BOT_TOKEN|TELEGRAM_ALLOWED_USERS|DISCORD_BOT_TOKEN|DISCORD_ALLOWED_USERS|SLACK_BOT_TOKEN|SLACK_APP_TOKEN)=' "$ENV_FILE" 2>/dev/null | sort
+    } | md5sum | awk '{print $1}'
+}
+
+log "started (interval=${INTERVAL}s, debounce=${DEBOUNCE}s)"
+
+last=""
+[ -f "$STATE_FILE" ] && last="$(cat "$STATE_FILE" 2>/dev/null || true)"
+
+# Reconcile once at startup so a service-state drift (e.g. snap restarted while
+# a token was already present) is corrected without waiting for a config edit.
+"$RECONCILE" || log "WARN: initial reconcile exited non-zero"
+last="$(fingerprint)"
+printf '%s' "$last" > "$STATE_FILE" 2>/dev/null || true
+
+while true; do
+    sleep "$INTERVAL" &
+    wait $!   # interruptible sleep so SIGTERM is handled promptly
+
+    cur="$(fingerprint)"
+    if [ "$cur" != "$last" ]; then
+        log "platform config changed — debouncing ${DEBOUNCE}s"
+        sleep "$DEBOUNCE" & wait $!
+        cur="$(fingerprint)"   # re-read after quiescence
+        log "reconciling services"
+        "$RECONCILE" || log "WARN: reconcile exited non-zero"
+        printf '%s' "$cur" > "$STATE_FILE" 2>/dev/null || true
+        last="$cur"
+    fi
+done

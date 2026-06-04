@@ -1,0 +1,53 @@
+{
+  "snaps": [
+    {
+      "name": "all-dev-hermesagent",
+      "refresh": true
+    }
+  ],
+  "snap_config": [
+    {
+      "snap": "all-dev-hermesagent",
+      "settings": {
+        "ct-node-id": "<ALL_APP_NODE_ID>",
+        "ct-callback-url": "<ALL_APP_CALLBACK_URL>",
+        "ct-deployment-id": "<ALL_APP_DEPLOYMENT_ID>",
+        "ct-snap-name": "all-dev-hermesagent"
+      }
+    }
+  ],
+  "ignore_failures": false,
+  "pre_service_actions": [],
+  "post_service_actions": [
+    {
+      "names": [
+        "all-dev-hermesagent.ct-engine",
+        "all-dev-hermesagent.dashboard",
+        "all-dev-hermesagent.config-watcher"
+      ],
+      "action": "restart"
+    }
+  ],
+  "interface_connections": [
+    {
+      "plug": "all-dev-hermesagent:network",
+      "slot": ":network",
+      "action": "connect"
+    },
+    {
+      "plug": "all-dev-hermesagent:network-bind",
+      "slot": ":network-bind",
+      "action": "connect"
+    },
+    {
+      "plug": "all-dev-hermesagent:ssh-keys",
+      "slot": ":ssh-keys",
+      "action": "connect"
+    },
+    {
+      "plug": "all-dev-hermesagent:removable-media",
+      "slot": ":removable-media",
+      "action": "connect"
+    }
+  ]
+}

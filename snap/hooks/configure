@@ -66,6 +66,10 @@ update_config "logging.level"    "log-level"
 chmod 644 "$ENV_FILE" "$CONFIG_FILE"
 
 # --- Service Control ---
+# enabled/disabled are explicit operator overrides. For `gateway-service` the
+# value `auto` (the default) is intentionally a no-op here — the gateway is then
+# governed by reconcile-services below, which starts it iff a messaging token is
+# configured. agent/acp/dashboard remain straightforward on/off toggles.
 handle_service() {
     snap_key="$1"
     service_name="$2"
@@ -77,16 +81,25 @@ handle_service() {
     fi
 }
 
-handle_service "agent-service"     "agent"
-handle_service "acp-service"       "acp"
-handle_service "gateway-service"   "gateway"
-handle_service "dashboard-service" "dashboard"
+handle_service "agent-service"          "agent"
+handle_service "acp-service"            "acp"
+handle_service "gateway-service"        "gateway"
+handle_service "dashboard-service"      "dashboard"
+handle_service "config-watcher-service" "config-watcher"
 
 # CT Engine
 CT_URL=$(snapctl get ct-callback-url)
 if [ -n "$CT_URL" ]; then
     snapctl start --enable all-dev-hermesagent.ct-engine
     snapctl restart all-dev-hermesagent.ct-engine
+fi
+
+# --- Reconcile services to the freshly-written config ---
+# Brings the gateway up/down to match configured messaging tokens (and reloads
+# it so new tokens connect). Same code path the config-watcher daemon runs for
+# web-UI-driven changes, so `snap set` and the dashboard stay consistent.
+if [ -x "$SNAP/bin/reconcile-services" ]; then
+    "$SNAP/bin/reconcile-services" || true
 fi
 
 echo "Configuration applied successfully."

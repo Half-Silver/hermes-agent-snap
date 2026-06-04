@@ -73,12 +73,32 @@ sudo snap set all-dev-hermesagent model=openrouter/deepseek/deepseek-r1
 |---|---|
 | `sudo snap set all-dev-hermesagent dashboard-service=enabled` | Start the web dashboard (default: **enabled**) |
 | `sudo snap set all-dev-hermesagent dashboard-service=disabled` | Stop the web dashboard |
-| `sudo snap set all-dev-hermesagent gateway-service=enabled` | Start the messaging gateway (Telegram/Discord/Slack) |
-| `sudo snap set all-dev-hermesagent gateway-service=disabled` | Stop the messaging gateway |
+| `sudo snap set all-dev-hermesagent gateway-service=auto` | **Default.** Gateway runs only when a messaging token is configured; comes up automatically when you add one (web UI or `snap set`), stops when none is set |
+| `sudo snap set all-dev-hermesagent gateway-service=enabled` | Pin the messaging gateway on (overrides `auto`) |
+| `sudo snap set all-dev-hermesagent gateway-service=disabled` | Pin the messaging gateway off (overrides `auto`) |
 | `sudo snap set all-dev-hermesagent agent-service=enabled` | Start the AI agent daemon |
 | `sudo snap set all-dev-hermesagent agent-service=disabled` | Stop the AI agent daemon |
 | `sudo snap set all-dev-hermesagent acp-service=enabled` | Start the ACP adapter |
 | `sudo snap set all-dev-hermesagent acp-service=disabled` | Stop the ACP adapter |
+| `sudo snap set all-dev-hermesagent config-watcher-service=enabled` | Apply web-UI config changes automatically (default: **enabled**) |
+| `sudo snap set all-dev-hermesagent config-watcher-service=disabled` | Turn off auto-apply; config then applies only on `snap set` |
+
+### How config changes apply (headless / web-UI driven)
+
+The dashboard writes API keys and tokens to `.env` / `config.yaml`, but a web
+form cannot restart the snap's daemons. The **config-watcher** service closes
+that gap: it watches the messaging-token slice of `.env` and, when it changes,
+reconciles the `gateway` service via `snapctl` so the new token connects — no
+SSH or `snap set` required.
+
+- **LLM / provider keys** (OpenRouter, OpenAI, …) need no restart — a running
+  gateway hot-reloads `.env` credentials on every turn.
+- **Messaging tokens** (Telegram/Discord/Slack) bring the gateway up (or, when
+  removed, take it down) on the next watcher tick (a few seconds).
+- Setting a key via `snap set` runs the same reconcile through the configure
+  hook, so both paths stay consistent.
+
+Watch it work: `snap logs all-dev-hermesagent.config-watcher -f`
 
 ## CT Engine Integration
 
@@ -111,6 +131,7 @@ These are set automatically by the Control Tower during deployment:
 | `snap logs all-dev-hermesagent.agent` | Agent daemon logs |
 | `snap logs all-dev-hermesagent.acp` | ACP adapter logs |
 | `snap logs all-dev-hermesagent.ct-engine` | CT Engine sidecar logs |
+| `snap logs all-dev-hermesagent.config-watcher` | Config-watcher (auto-apply) logs |
 
 ## Example: Full Setup
 

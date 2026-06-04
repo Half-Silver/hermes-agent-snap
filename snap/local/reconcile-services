@@ -1,0 +1,72 @@
+#!/bin/sh
+# ─────────────────────────────────────────────────────────────────────────────
+# snap/local/reconcile-services — make snap services match the on-disk config.
+#
+# The Hermes web dashboard (and `snap set`) write API keys / tokens to
+#   $SNAP_COMMON/.env       (secrets)
+#   $SNAP_COMMON/config.yaml (settings)
+# but the web UI has no way to start/stop the snap's systemd daemons. This
+# script bridges that gap: it reads the config and reconciles the `gateway`
+# service so that filling in a messaging token on the config page is enough to
+# bring the gateway up (and removing it takes the gateway down).
+#
+# Called by:
+#   * snap/hooks/configure   — on every `snap set …`
+#   * bin/config-watcher     — whenever .env/config.yaml change (web UI writes)
+#
+# Idempotent and safe to call repeatedly. Never aborts its caller (best-effort).
+#
+# Operator override (snap config key `gateway-service`):
+#   enabled  → gateway always on
+#   disabled → gateway always off
+#   auto     → on iff a messaging token is configured  (the default)
+# ─────────────────────────────────────────────────────────────────────────────
+set -u
+
+SNAP_NAME="all-dev-hermesagent"
+ENV_FILE="${SNAP_COMMON:?}/.env"
+CONFIG_FILE="${SNAP_COMMON}/config.yaml"
+
+log() { echo "[reconcile] $*"; }
+
+# True if KEY is present with a non-empty value in .env
+has_env() {
+    [ -f "$ENV_FILE" ] && grep -Eq "^${1}=.+" "$ENV_FILE"
+}
+
+# True if the named service is currently active (running)
+svc_active() {
+    snapctl services "$SNAP_NAME.$1" 2>/dev/null \
+        | awk 'NR>1 {print $3}' | grep -q '^active$'
+}
+
+# --- Desired gateway state ---------------------------------------------------
+# Default: governed by whether any messaging platform token is configured.
+gateway_wanted=0
+for k in TELEGRAM_BOT_TOKEN DISCORD_BOT_TOKEN SLACK_BOT_TOKEN; do
+    if has_env "$k"; then gateway_wanted=1; fi
+done
+
+# Operator override wins over token detection.
+gw_pref="$(snapctl get gateway-service 2>/dev/null || true)"
+case "$gw_pref" in
+    enabled)  gateway_wanted=1 ;;
+    disabled) gateway_wanted=0 ;;
+    *)        : ;;   # auto / unset → keep token-based decision
+esac
+
+# --- Apply -------------------------------------------------------------------
+if [ "$gateway_wanted" = "1" ]; then
+    if svc_active gateway; then
+        log "gateway active — restarting to load current config"
+        snapctl restart "$SNAP_NAME.gateway" || log "WARN: restart failed"
+    else
+        log "starting gateway (messaging platform configured)"
+        snapctl start --enable "$SNAP_NAME.gateway" || log "WARN: start failed"
+    fi
+else
+    if svc_active gateway; then
+        log "no messaging platform configured — stopping gateway"
+        snapctl stop --disable "$SNAP_NAME.gateway" || log "WARN: stop failed"
+    fi
+fi

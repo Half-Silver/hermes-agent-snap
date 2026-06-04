@@ -18,7 +18,15 @@ chmod 644 "$SNAP_COMMON/config.yaml"
 snapctl set agent-service="disabled"
 snapctl set acp-service="disabled"
 snapctl set dashboard-service="enabled"
-snapctl set gateway-service="disabled"
+# gateway-service: "auto" → the config-watcher / configure hook bring the
+# gateway up automatically once a messaging token is configured (from the web
+# UI or `snap set`), and take it down when none is set. Use "enabled"/"disabled"
+# to override and pin it on/off.
+snapctl set gateway-service="auto"
+# config-watcher: applies web-UI config changes (the dashboard writes .env but
+# can't restart daemons). Keep enabled on a headless box; "disabled" turns the
+# automation off so config only applies on `snap set` / manual restart.
+snapctl set config-watcher-service="enabled"
 snapctl set model="gpt-4o"
 snapctl set log-level="info"
 
