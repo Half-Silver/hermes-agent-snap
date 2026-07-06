@@ -1,6 +1,6 @@
 name: all-dev-hermesagent
 base: core24
-version: '0.12.0'
+version: '0.13.0'
 summary: The self-improving AI agent
 title: Hermes Agent
 license: Apache-2.0
@@ -79,10 +79,18 @@ parts:
     source: ../all_snap_plugin
     organize:
       src/ct_engine.py: bin/ct-engine
+      snap/hooks/configure: snap/hooks/configure
+      snap/hooks/pre-refresh: snap/hooks/pre-refresh
+      snap/hooks/post-refresh: snap/hooks/post-refresh
+      snap/hooks/remove: snap/hooks/remove
       docs: plugin-docs
       examples: plugin-examples
     stage:
       - bin/ct-engine
+      - snap/hooks/configure
+      - snap/hooks/pre-refresh
+      - snap/hooks/post-refresh
+      - snap/hooks/remove
       - plugin-docs
       - plugin-docs/**
       - plugin-examples
