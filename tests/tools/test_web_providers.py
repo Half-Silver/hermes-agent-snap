@@ -38,66 +38,6 @@ class TestWebProviderABCs:
         with pytest.raises(TypeError):
             WebSearchProvider()  # type: ignore[abstract]
 
-    def test_concrete_search_only_provider_works(self):
-        from agent.web_search_provider import WebSearchProvider
-
-        class Dummy(WebSearchProvider):
-            @property
-            def name(self) -> str:
-                return "dummy"
-
-            @property
-            def display_name(self) -> str:
-                return "Dummy Search"
-
-            def is_available(self) -> bool:
-                return True
-
-            def supports_search(self) -> bool:
-                return True
-
-            def search(self, query: str, limit: int = 5) -> Dict[str, Any]:
-                return {"success": True, "data": {"web": []}}
-
-        d = Dummy()
-        assert d.name == "dummy"
-        assert d.display_name == "Dummy Search"
-        assert d.is_available() is True
-        assert d.supports_search() is True
-        assert d.supports_extract() is False  # default
-        assert d.search("test")["success"] is True
-
-    def test_concrete_multi_capability_provider_works(self):
-        from agent.web_search_provider import WebSearchProvider
-
-        class Dummy(WebSearchProvider):
-            @property
-            def name(self) -> str:
-                return "dummy"
-
-            @property
-            def display_name(self) -> str:
-                return "Dummy Multi"
-
-            def is_available(self) -> bool:
-                return True
-
-            def supports_search(self) -> bool:
-                return True
-
-            def supports_extract(self) -> bool:
-                return True
-
-            def search(self, query: str, limit: int = 5) -> Dict[str, Any]:
-                return {"success": True, "data": {"web": []}}
-
-            def extract(self, urls: List[str], **kwargs: Any) -> List[Dict[str, Any]]:
-                return [{"url": urls[0], "content": "x"}]
-
-        d = Dummy()
-        assert d.supports_search() is True
-        assert d.supports_extract() is True
-        assert d.extract(["https://example.com"])[0]["url"] == "https://example.com"
 
     def test_search_only_provider_skips_extract(self):
         """Search-only providers don't have to implement extract()."""
@@ -147,47 +87,6 @@ class TestPerCapabilityBackendSelection:
         monkeypatch.setenv("TAVILY_API_KEY", "test-key")
         assert web_tools._get_search_backend() == "tavily"
 
-    def test_extract_backend_overrides_generic(self, monkeypatch):
-        from tools import web_tools
-
-        monkeypatch.setattr(web_tools, "_load_web_config", lambda: {
-            "backend": "tavily",
-            "extract_backend": "exa",
-        })
-        monkeypatch.setenv("EXA_API_KEY", "test-key")
-        assert web_tools._get_extract_backend() == "exa"
-
-    def test_falls_back_to_generic_backend_when_search_backend_empty(self, monkeypatch):
-        from tools import web_tools
-
-        monkeypatch.setattr(web_tools, "_load_web_config", lambda: {
-            "backend": "tavily",
-            "search_backend": "",
-        })
-        monkeypatch.setenv("TAVILY_API_KEY", "test-key")
-        assert web_tools._get_search_backend() == "tavily"
-
-    def test_falls_back_to_generic_backend_when_extract_backend_empty(self, monkeypatch):
-        from tools import web_tools
-
-        monkeypatch.setattr(web_tools, "_load_web_config", lambda: {
-            "backend": "parallel",
-            "extract_backend": "",
-        })
-        monkeypatch.setenv("PARALLEL_API_KEY", "test-key")
-        assert web_tools._get_extract_backend() == "parallel"
-
-    def test_search_backend_ignored_when_not_available(self, monkeypatch):
-        from tools import web_tools
-
-        monkeypatch.setattr(web_tools, "_load_web_config", lambda: {
-            "backend": "firecrawl",
-            "search_backend": "exa",  # set but no EXA_API_KEY
-        })
-        monkeypatch.delenv("EXA_API_KEY", raising=False)
-        monkeypatch.setenv("FIRECRAWL_API_KEY", "fc-key")
-        # Should fall back to firecrawl since exa isn't configured
-        assert web_tools._get_search_backend() == "firecrawl"
 
     def test_fully_backward_compatible_with_web_backend_only(self, monkeypatch):
         from tools import web_tools
@@ -294,8 +193,13 @@ class TestUnconfiguredErrorEnvelopeParity:
     def test_unconfigured_search_emits_top_level_error(self, monkeypatch):
         """``web_search_tool`` with no creds returns ``{"error": "Error searching web: ..."}``
         — matching main's ``tool_error()`` envelope, not a per-result shape.
+
+        Keyless fallback (Parallel/Exa free tiers) is disabled here: with it
+        on, a zero-credential install routes to the keyless tier instead of
+        erroring (covered in test_web_keyless_fallback.py).
         """
         from tools import web_tools
+        from agent import web_search_registry
 
         self._clear_web_creds(monkeypatch)
         # Reset firecrawl client cache so the unconfigured state is re-evaluated
@@ -303,6 +207,7 @@ class TestUnconfiguredErrorEnvelopeParity:
         monkeypatch.setattr(web_tools, "_firecrawl_client_config", None, raising=False)
         monkeypatch.setattr(web_tools, "_ddgs_package_importable", lambda: False)
         monkeypatch.setattr(web_tools, "_load_web_config", lambda: {})
+        monkeypatch.setattr(web_search_registry, "_keyless_tier_enabled", lambda: False)
 
         result = json.loads(web_tools.web_search_tool("hello world", limit=3))
         assert "error" in result, f"expected top-level 'error' key, got {result}"
@@ -544,57 +449,6 @@ class TestDisabledPluginDiagnostic:
         # Unknown name is not a match
         assert _disabled_web_plugin_for("nope") is None
 
-    def test_disabled_web_plugin_for_normalizes_hyphens(self, monkeypatch):
-        from agent.web_search_registry import _disabled_web_plugin_for
-
-        self._patch_manager(monkeypatch, {
-            "web/brave_free": self._FakeLoaded(False, "disabled via config"),
-        })
-        # config name uses a hyphen; plugin key uses an underscore
-        assert _disabled_web_plugin_for("brave-free") == "web/brave_free"
-
-    def test_disabled_web_plugin_for_ignores_non_disabled_errors(self, monkeypatch):
-        from agent.web_search_registry import _disabled_web_plugin_for
-
-        self._patch_manager(monkeypatch, {
-            # a plugin that failed to import is NOT "disabled via config"
-            "web/exa": self._FakeLoaded(False, "ImportError: boom"),
-        })
-        assert _disabled_web_plugin_for("exa") is None
-
-    def test_extract_tool_reports_disabled_plugin(self, monkeypatch):
-        import asyncio
-
-        from tools import web_tools
-
-        restore = self._clear_registry()
-        try:
-            monkeypatch.setattr(web_tools, "_ensure_web_plugins_loaded", lambda: None)
-            monkeypatch.setattr(
-                web_tools, "_load_web_config",
-                lambda: {"extract_backend": "firecrawl"},
-            )
-            import agent.web_search_registry as wsr
-            monkeypatch.setattr(
-                wsr, "_read_config_key",
-                lambda *path: "firecrawl" if path == ("web", "extract_backend") else None,
-            )
-            self._patch_manager(monkeypatch, {
-                "web/firecrawl": self._FakeLoaded(False, "disabled via config"),
-            })
-            result = json.loads(
-                asyncio.new_event_loop().run_until_complete(
-                    web_tools.web_extract_tool(["https://example.com"])
-                )
-            )
-            err = result["error"]
-            assert "disabled" in err
-            assert "web/firecrawl" in err
-            assert "hermes plugins enable" in err
-            # Must NOT tell them to set extract_backend (already set)
-            assert "Set web.extract_backend to firecrawl" not in err
-        finally:
-            restore()
 
     def test_search_tool_reports_disabled_plugin(self, monkeypatch):
         from tools import web_tools

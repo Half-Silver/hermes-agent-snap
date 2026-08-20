@@ -103,6 +103,21 @@ import sys
 logger = logging.getLogger(__name__)
 
 
+def _web_extract_url(value: Any) -> Optional[str]:
+    """Return a usable URL from a model-supplied extract item.
+
+    Models sometimes forward a complete web-search result instead of its URL.
+    Accept the two common URL keys, but reject missing/non-string values rather
+    than stringifying arbitrary objects into misleading fetch targets.
+    """
+    if isinstance(value, dict):
+        value = value.get("url") or value.get("href")
+    if not isinstance(value, str):
+        return None
+    value = value.strip()
+    return value or None
+
+
 # ─── Backend Selection ────────────────────────────────────────────────────────
 
 def _env_value(name: str) -> str:
@@ -132,7 +147,11 @@ def _load_web_config() -> dict:
     """Load the ``web:`` section from ~/.hermes/config.yaml."""
     try:
         from hermes_cli.config import load_config
-        return load_config().get("web", {})
+        # ``or {}``: a present-but-null ``web:`` section (YAML ``web:`` with no
+        # body) makes ``.get("web", {})`` return None, which would break every
+        # caller that does ``_load_web_config().get(...)``. Honor the ``-> dict``
+        # contract so callers never see None.
+        return load_config().get("web") or {}
     except (ImportError, Exception):
         return {}
 
@@ -204,16 +223,36 @@ def _list_registered_web_providers():
 def _get_backend() -> str:
     """Determine which web backend to use (shared fallback).
 
-    Reads ``web.backend`` from config.yaml (set by ``hermes tools``).
-    Falls back to whichever API key is present for users who configured
-    keys manually without running setup.
+    Reads ``web.backend`` from config.yaml (set by ``hermes tools``). A
+    stored backend name is returned as-is — no availability probe, no
+    fallback — so the vendor path can raise its own honest error when the
+    selection is broken. The credential/entitlement autodetect ladder runs
+    ONLY when no web selection has ever been stored.
     """
     configured = (_load_web_config().get("backend") or "").lower().strip()
-    if configured in _LEGACY_WEB_BACKENDS or _registered_web_provider(configured) is not None:
+    if configured:
+        # Strict: the stored selection is final, known name or not — an
+        # unknown/typoed name surfaces as the vendor path's honest error
+        # rather than silently rerouting through the credential ladder.
+        # The managed "Nous Subscription" selection ("nous") is serviced by
+        # the firecrawl provider, whose client resolver routes it through
+        # the managed Tool Gateway.
+        from tools.tool_backend_helpers import NOUS_MANAGED_PROVIDER
+
+        if configured == NOUS_MANAGED_PROVIDER:
+            return "firecrawl"
         return configured
 
-    # Fallback for manual / legacy config — pick the highest-priority
-    # available backend. Explicit user credentials (TAVILY_API_KEY etc.)
+    from tools.tool_backend_helpers import selection_exists
+
+    if selection_exists("web"):
+        # A web selection exists (e.g. use_gateway key or per-capability
+        # backends) but the shared backend name is empty — keep the
+        # firecrawl default rather than credential-laddering.
+        return "firecrawl"
+
+    # Never-configured install — pick the highest-priority available
+    # backend. Explicit user credentials (TAVILY_API_KEY etc.)
     # beat the managed-tool-gateway probe so a deliberate setup is not
     # pre-empted by a Nous OAuth token whose subscription tier may not
     # actually grant web-search access (the gateway then fails at runtime
@@ -248,6 +287,32 @@ def _get_backend() -> str:
         except Exception as exc:  # noqa: BLE001 — a broken provider is skipped
             logger.debug("web provider %r.is_available() raised: %s", provider.name, exc)
 
+    # Keyless free-tier walk — zero credentials anywhere. Providers with a
+    # public anonymous endpoint (Parallel, Exa — see
+    # plugins/web/keyless_mcp.py) can still serve, unless the user disabled
+    # the tier via ``web.keyless_fallback: false``. Strictly last so it
+    # never pre-empts any keyed/importable backend above. Discovery must
+    # run first — this path is reachable from contexts that haven't loaded
+    # plugins yet (subprocess agent runs, delegate children, scripts).
+    try:
+        _ensure_web_plugins_loaded()
+        from agent.web_search_registry import _keyless_preference, _keyless_tier_enabled
+
+        if _keyless_tier_enabled():
+            for name in _keyless_preference():
+                provider = _registered_web_provider(name)
+                if provider is None:
+                    continue
+                try:
+                    if provider.is_keyless_available():
+                        return name
+                except Exception as exc:  # noqa: BLE001 — skip broken provider
+                    logger.debug(
+                        "web provider %r.is_keyless_available() raised: %s", name, exc
+                    )
+    except Exception as exc:  # noqa: BLE001 — registry optional; never fatal
+        logger.debug("keyless fallback walk failed: %s", exc)
+
     return "firecrawl"  # default (backward compat)
 
 
@@ -279,12 +344,16 @@ def _get_extract_backend() -> str:
 def _get_capability_backend(capability: str) -> str:
     """Shared helper for per-capability backend selection.
 
-    Reads ``web.{capability}_backend`` from config; if set and available,
-    uses it. Otherwise falls through to the shared ``_get_backend()``.
+    Reads ``web.{capability}_backend`` from config; a stored value is
+    returned unconditionally (strict selection — no availability probe).
+    A selected-but-broken backend surfaces the vendor path's honest error
+    instead of being silently replaced by whatever the credential ladder
+    finds. Falls through to the shared ``_get_backend()`` only when no
+    per-capability override is stored.
     """
     cfg = _load_web_config()
     specific = (cfg.get(f"{capability}_backend") or "").lower().strip()
-    if specific and _is_backend_available(specific):
+    if specific:
         return specific
     return _get_backend()
 
@@ -403,7 +472,7 @@ def _web_requires_env() -> list[str]:
 DEFAULT_EXTRACT_CHAR_LIMIT = 15000
 
 # Hard ceiling on the full-text file written to cache/web. The truncate-store
-# path otherwise calls path.write_text(content) with no upper bound, so a
+# path otherwise calls path.write_text(content, encoding="utf-8") with no upper bound, so a
 # multi-MB page (some backends return very large markdown) writes unbounded
 # bytes to disk on every extract. Cap the stored copy; the model only ever
 # sees char_limit anyway, and a 2MB page is already far more than any single
@@ -487,7 +556,14 @@ def _store_full_text(url: str, content: str) -> Optional[str]:
                 + f"\n\n[... stored copy truncated at {MAX_STORED_TEXT_CHARS:,} chars "
                 f"of {len(content):,}; re-extract a more specific URL for the rest ...]"
             )
-        path.write_text(content, encoding="utf-8")
+        from tools.spill_safety import write_text_exclusive
+
+        # Deterministic filename in a well-known dir: refuse symlinks via
+        # lstat-unlink + exclusive create. Re-extraction of the same URL
+        # legitimately overwrites (same slug-digest name). Not private:
+        # cache/web is bind-mounted into remote backends whose container UID
+        # must be able to read it, and content is fetched public text.
+        write_text_exclusive(path, content, private=False, overwrite=True)
         return str(path)
     except Exception as exc:  # noqa: BLE001
         logger.debug("Failed to store full web_extract text for %s: %s", url, exc)
@@ -526,7 +602,6 @@ def _truncate_with_footer(
 
     total = len(content)
     stored_path = _store_full_text(url, content)
-    shown = len(head) + len(tail)
 
     footer_lines = [
         "",
@@ -667,9 +742,35 @@ def web_search_tool(query: str, limit: int = 5) -> str:
         backend = _get_search_backend()
         provider = _wsp_get_provider(backend) if backend else None
         if provider is None or not provider.supports_search():
-            # Fall back to availability-walked active provider when the
-            # configured backend isn't a registered search provider (typo,
-            # uninstalled plugin, or capability mismatch).
+            from tools.tool_backend_helpers import (
+                selection_error,
+                selection_exists,
+            )
+
+            if provider is None and backend and selection_exists("web"):
+                disabled_key = _disabled_web_plugin_for(capability="search")
+                if disabled_key:
+                    _vendor = disabled_key.split("/", 1)[-1]
+                    error_text = (
+                        f"web.search_backend is set to '{_vendor}', but its "
+                        f"plugin ('{disabled_key}') is disabled in config. "
+                        f"Re-enable it with `hermes plugins enable {disabled_key}` "
+                        "(or remove it from plugins.disabled)."
+                    )
+                else:
+                    error_text = selection_error(
+                        "web",
+                        f"'{backend}'",
+                        "no registered web search provider has that name",
+                    )
+                response_data = {"success": False, "error": error_text}
+                result_json = json.dumps(response_data, indent=2, ensure_ascii=False)
+                debug_call_data["error"] = error_text
+                _debug.log_call("web_search_tool", debug_call_data)
+                _debug.save()
+                return result_json
+            # Never-configured install: fall back to the availability-walked
+            # active provider (legacy autodetect behavior).
             provider = get_active_search_provider()
 
         if provider is None:
@@ -722,7 +823,7 @@ def web_search_tool(query: str, limit: int = 5) -> str:
 
 
 async def web_extract_tool(
-    urls: List[str],
+    urls: List[Any],
     format: str = None,
     char_limit: Optional[int] = None,
 ) -> str:
@@ -738,7 +839,8 @@ async def web_extract_tool(
     ``[IMAGE: alt]`` placeholders (real image URLs are preserved as links).
 
     Args:
-        urls (List[str]): List of URLs to extract content from
+        urls (List[Any]): URL strings or search-result objects containing a
+            string ``url`` or ``href`` field
         format (str): Desired output format ("markdown" or "html", optional)
         char_limit (Optional[int]): Per-page char budget sent to the model
             (default: web.extract_char_limit or 15000). Larger pages truncate.
@@ -758,7 +860,21 @@ async def web_extract_tool(
     from agent.redact import _PREFIX_RE
     from urllib.parse import unquote
     normalized_urls: List[str] = []
-    for _url in urls:
+    normalized_indices: List[int] = []
+    invalid_urls: Dict[int, Dict[str, Any]] = {}
+    for index, item in enumerate(urls):
+        _url = _web_extract_url(item)
+        if _url is None:
+            invalid_urls[index] = {
+                "url": "",
+                "title": "",
+                "content": "",
+                "error": (
+                    f"Invalid URL item at index {index}: expected a URL string "
+                    "or an object with a string 'url' or 'href' field"
+                ),
+            }
+            continue
         normalized_url = normalize_url_for_request(_url)
         if (
             _PREFIX_RE.search(_url)
@@ -783,6 +899,7 @@ async def web_extract_tool(
                 ),
             })
         normalized_urls.append(normalized_url)
+        normalized_indices.append(index)
 
     debug_call_data = {
         "parameters": {
@@ -804,15 +921,17 @@ async def web_extract_tool(
 
         # ── SSRF protection — filter out private/internal URLs before any backend ──
         safe_urls = []
-        ssrf_blocked: List[Dict[str, Any]] = []
-        for url in normalized_urls:
+        safe_indices = []
+        ssrf_blocked: Dict[int, Dict[str, Any]] = {}
+        for index, url in zip(normalized_indices, normalized_urls):
             if not await async_is_safe_url(url):
-                ssrf_blocked.append({
+                ssrf_blocked[index] = {
                     "url": url, "title": "", "content": "",
                     "error": "Blocked: URL targets a private or internal network address",
-                })
+                }
             else:
                 safe_urls.append(url)
+                safe_indices.append(index)
 
         # Dispatch only safe URLs to the configured backend
         if not safe_urls:
@@ -853,6 +972,35 @@ async def web_extract_tool(
                                 "tavily, exa, or parallel."
                             ),
                         },
+                        ensure_ascii=False,
+                    )
+                from tools.tool_backend_helpers import (
+                    selection_error,
+                    selection_exists,
+                )
+
+                if backend and selection_exists("web"):
+                    # Strict selection: a stored-but-unregistered backend
+                    # errors by name instead of silently switching to
+                    # whatever the availability walk finds.
+                    disabled_key = _disabled_web_plugin_for(capability="extract")
+                    if disabled_key:
+                        _vendor = disabled_key.split("/", 1)[-1]
+                        error_text = (
+                            f"web.extract_backend is set to '{_vendor}', but "
+                            f"its plugin ('{disabled_key}') is disabled in "
+                            f"config. Re-enable it with `hermes plugins "
+                            f"enable {disabled_key}` (or remove it from "
+                            "plugins.disabled)."
+                        )
+                    else:
+                        error_text = selection_error(
+                            "web",
+                            f"'{backend}'",
+                            "no registered web extract provider has that name",
+                        )
+                    return json.dumps(
+                        {"success": False, "error": error_text},
                         ensure_ascii=False,
                     )
                 provider = get_active_extract_provider()
@@ -906,9 +1054,25 @@ async def web_extract_tool(
                     provider.extract, safe_urls, format=format
                 )
 
-        # Merge any SSRF-blocked results back in
-        if ssrf_blocked:
-            results = ssrf_blocked + results
+        # Reconstruct the original input order across invalid, blocked, and
+        # provider-processed entries. Providers are expected to preserve the
+        # order of the safe URL list they receive.
+        if invalid_urls or ssrf_blocked:
+            safe_results = {
+                index: (
+                    results[position]
+                    if position < len(results)
+                    else {
+                        "url": safe_urls[position],
+                        "title": "",
+                        "content": "",
+                        "error": "Extract backend returned no result for this URL",
+                    }
+                )
+                for position, index in enumerate(safe_indices)
+            }
+            by_index = {**safe_results, **ssrf_blocked, **invalid_urls}
+            results = [by_index[index] for index in range(len(urls))]
 
         response = {"results": results}
         
@@ -1004,7 +1168,9 @@ def check_web_api_key() -> bool:
     :func:`_is_backend_available`, which delegates non-legacy names to the
     registry.
     """
-    configured = _load_web_config().get("backend", "").lower().strip()
+    # ``or ""``: a null ``web.backend`` value yields None from ``.get``, and
+    # ``None.lower()`` would raise. Mirrors ``_get_backend``.
+    configured = (_load_web_config().get("backend") or "").lower().strip()
     if configured and _is_backend_available(configured):
         return True
     # Any built-in backend with credentials present. This is a boolean OR, so
@@ -1014,8 +1180,14 @@ def check_web_api_key() -> bool:
     # Any plugin-registered provider the registry considers active for either
     # capability. Delegating to the registry's own availability-filtered
     # resolvers keeps a single authority for "is a custom provider usable"
-    # rather than re-implementing the walk here.
+    # rather than re-implementing the walk here. This also covers the
+    # keyless free tier (Parallel/Exa anonymous MCP endpoints): the registry
+    # walk falls back to keyless-capable providers when nothing is keyed,
+    # so a zero-credential install still lights the web tools up. Discovery
+    # must run first — check_fn fires at tool-registration time, before any
+    # dispatch has populated the registry.
     try:
+        _ensure_web_plugins_loaded()
         from agent.web_search_registry import (
             get_active_search_provider,
             get_active_extract_provider,
