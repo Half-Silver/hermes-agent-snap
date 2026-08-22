@@ -31,6 +31,24 @@ config:
     default: "disabled"
     description: "Enable/disable the ACP adapter"
 
+  # --- Web Dashboard Access ---
+  # A non-loopback dashboard bind always requires auth. Set a username +
+  # password and the dashboard daemon binds 0.0.0.0; leave them unset and it
+  # stays on 127.0.0.1. The plaintext password is hashed by the configure
+  # hook and then cleared from snap config.
+  dashboard-username:
+    required: false
+    type: string
+    description: "Dashboard login username (enables LAN access)"
+  dashboard-password:
+    required: false
+    type: string
+    description: "Dashboard login password (hashed on set, then cleared)"
+  dashboard-host:
+    required: false
+    type: string
+    description: "Dashboard bind address override (0.0.0.0 or 127.0.0.1)"
+
   # --- LLM Provider Settings ---
   model:
     required: false
@@ -109,7 +127,7 @@ run:
 
 # Reports the dashboard URL in every callback
 sidecar:
-  status_command: hostname -I | awk '{print "dashboard: http://" $1 ":9119"}'
+  status_command: 'hostname -I | awk ''{print "dashboard: http://" $1 ":9119"}'''
 
 output:
   mode: "logs"

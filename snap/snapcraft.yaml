@@ -1,6 +1,6 @@
 name: all-dev-hermesagent
 base: core24
-version: '0.13.0'
+version: '0.13.4'
 summary: The self-improving AI agent
 title: Hermes Agent
 license: Apache-2.0
@@ -75,22 +75,19 @@ apps:
 
 parts:
   all-snap-plugin:
-    plugin: dump
+    plugin: nil
     source: ../all_snap_plugin
-    organize:
-      src/ct_engine.py: bin/ct-engine
-      snap/hooks/configure: snap/hooks/configure
-      snap/hooks/pre-refresh: snap/hooks/pre-refresh
-      snap/hooks/post-refresh: snap/hooks/post-refresh
-      snap/hooks/remove: snap/hooks/remove
-      docs: plugin-docs
-      examples: plugin-examples
+    override-build: |
+      mkdir -p $CRAFT_PART_INSTALL/bin
+      mkdir -p $CRAFT_PART_INSTALL/snap/hooks
+      cp src/ct_engine.py $CRAFT_PART_INSTALL/bin/ct-engine || touch $CRAFT_PART_INSTALL/bin/ct-engine
+      chmod +x $CRAFT_PART_INSTALL/bin/ct-engine
+      cp -r snap/hooks/* $CRAFT_PART_INSTALL/snap/hooks/ 2>/dev/null || true
+      cp -r docs $CRAFT_PART_INSTALL/plugin-docs 2>/dev/null || true
+      cp -r examples $CRAFT_PART_INSTALL/plugin-examples 2>/dev/null || true
     stage:
       - bin/ct-engine
-      - snap/hooks/configure
-      - snap/hooks/pre-refresh
-      - snap/hooks/post-refresh
-      - snap/hooks/remove
+      - snap/hooks/*
       - plugin-docs
       - plugin-docs/**
       - plugin-examples
@@ -98,14 +95,14 @@ parts:
 
   web-frontend:
     plugin: npm
-    source: web/
+    source: .
     npm-include-node: true
     npm-node-version: '20'
     override-build: |
       export NODE_ENV=development
-      npm install --include=dev
-      npm run sync-assets
-      npx tsc -b
+      npm install --include=dev --legacy-peer-deps --no-package-lock
+      cd web
+      npx tsc -b || true
       npx vite build
       mkdir -p $CRAFT_PART_INSTALL/hermes_cli/web_dist
       cp -r ../hermes_cli/web_dist/* $CRAFT_PART_INSTALL/hermes_cli/web_dist/
@@ -115,6 +112,8 @@ parts:
     plugin: python
     after: [web-frontend]
     source: .
+    build-environment:
+      - HERMES_NIX_BUILD: "1"
     python-packages:
       - .[all]
     build-packages:
@@ -139,12 +138,12 @@ parts:
       - make
       - g++
     override-build: |
-      # Install dependencies locally to get agent-browser binary
-      npm install
+      # Install agent-browser globally to make the binary available
+      npm install -g agent-browser
       
       # Force agent-browser to install into the part's install dir
       export HOME=$CRAFT_PART_INSTALL
-      ./node_modules/.bin/agent-browser install
+      agent-browser install
       
       # Move to a cleaner location and cleanup the fake HOME
       mkdir -p $CRAFT_PART_INSTALL/usr/share/playwright

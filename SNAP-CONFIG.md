@@ -17,9 +17,44 @@ sudo snap set all-dev-hermesagent openrouter-api-key=sk-or-your-key-here
 # Set the model
 sudo snap set all-dev-hermesagent model=openrouter/deepseek/deepseek-r1
 
-# Dashboard is auto-enabled — open in browser
-# http://<device-ip>:9119
+# Dashboard is auto-enabled, but LAN access needs a login (see below)
+sudo snap set all-dev-hermesagent dashboard-username=admin
+sudo snap set all-dev-hermesagent dashboard-password='choose-a-strong-one'
+# → http://<device-ip>:9119
 ```
+
+---
+
+## Web Dashboard Access
+
+The dashboard binds **loopback only** until you give it a password. Since the
+June-2026 hardening, *any* non-loopback bind requires a registered auth
+provider — `--insecure` no longer bypasses it, and the dashboard exits at
+startup rather than serving an unauthenticated UI on the network.
+
+```bash
+# Expose the dashboard on the LAN, behind a login (recommended)
+sudo snap set all-dev-hermesagent dashboard-username=admin
+sudo snap set all-dev-hermesagent dashboard-password='choose-a-strong-one'
+# → http://<device-ip>:9119, sign in with those credentials
+```
+
+The plaintext password is hashed (scrypt) by the configure hook and immediately
+dropped from snap config — only the hash is persisted. Setting either key
+restarts an already-running dashboard so it re-binds.
+
+| `snap set` command | Hermes config key | File |
+|---|---|---|
+| `sudo snap set all-dev-hermesagent dashboard-username=admin` | `HERMES_DASHBOARD_BASIC_AUTH_USERNAME` | `.env` |
+| `sudo snap set all-dev-hermesagent dashboard-password=<plaintext>` | hashed → `HERMES_DASHBOARD_BASIC_AUTH_PASSWORD_HASH` | `.env` |
+| `sudo snap set all-dev-hermesagent dashboard-password-hash=scrypt$...` | `HERMES_DASHBOARD_BASIC_AUTH_PASSWORD_HASH` | `.env` |
+| `sudo snap set all-dev-hermesagent dashboard-session-secret=<random>` | `HERMES_DASHBOARD_BASIC_AUTH_SECRET` | `.env` (auto-generated) |
+| `sudo snap set all-dev-hermesagent dashboard-host=0.0.0.0` | bind override for the dashboard daemon | — |
+
+With no credentials set the dashboard stays on `http://127.0.0.1:9119` — reach
+it with `ssh -L 9119:127.0.0.1:9119 <device>`, or run
+`sudo all-dev-hermesagent.hermes dashboard --host 0.0.0.0` once interactively to
+set a password through its built-in prompt.
 
 ---
 

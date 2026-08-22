@@ -32,13 +32,65 @@ trap handle_stop SIGTERM
 
 # Handle custom service wrappers
 if [ "$1" = "dashboard-service" ]; then
-    # Try to get the local IP, fallback to 0.0.0.0
-    LOCAL_IP=$(hostname -I 2>/dev/null | awk '{print $1}')
-    if [ -z "$LOCAL_IP" ]; then
-        LOCAL_IP="0.0.0.0"
+    # Bind host selection.
+    #
+    # Since the June-2026 hardening, ANY non-loopback bind requires a
+    # registered DashboardAuthProvider — `--insecure` is now a no-op and
+    # `start_server` exits instead of serving (that is why the daemon was
+    # dying on `--host 0.0.0.0 --insecure`). So: bind all interfaces only
+    # when dashboard credentials are configured, otherwise stay on loopback
+    # (where the gate never engages) instead of crash-looping.
+    #
+    # Override with:  snap set <snap> dashboard-host=0.0.0.0|127.0.0.1
+    ENV_FILE="$SNAP_COMMON/.env"
+    CONFIG_FILE="$SNAP_COMMON/config.yaml"
+
+    has_dashboard_auth() {
+        # Env surface — written by the configure hook from `snap set`.
+        if grep -qE '^HERMES_DASHBOARD_(BASIC_AUTH_USERNAME|OAUTH_CLIENT_ID)=[^[:space:]]' \
+            "$ENV_FILE" 2>/dev/null; then
+            return 0
+        fi
+        # config.yaml surface — written by `hermes dashboard`'s interactive
+        # setup and by `hermes dashboard register` (OAuth).
+        "$SNAP/bin/python3" - "$CONFIG_FILE" >/dev/null 2>&1 <<'PY'
+import sys
+try:
+    import yaml
+    with open(sys.argv[1]) as fh:
+        cfg = yaml.safe_load(fh) or {}
+except Exception:
+    sys.exit(1)
+dash = cfg.get("dashboard") or {}
+basic = dash.get("basic_auth") or {}
+ok = bool(basic.get("username")) and bool(basic.get("password_hash") or basic.get("password"))
+sys.exit(0 if ok else 1)
+PY
+    }
+
+    HOST="$(snapctl get dashboard-host 2>/dev/null || true)"
+    if [ -z "$HOST" ]; then
+        if has_dashboard_auth; then
+            HOST="0.0.0.0"
+        else
+            HOST="127.0.0.1"
+        fi
     fi
-    echo "the agent web ui is live at http://$LOCAL_IP:9119"
-    "$SNAP/bin/hermes" dashboard --host 0.0.0.0 --insecure &
+
+    if [ "$HOST" = "0.0.0.0" ] || [ "$HOST" = "::" ]; then
+        LOCAL_IP=$(hostname -I 2>/dev/null | awk '{print $1}')
+        if [ -z "$LOCAL_IP" ]; then
+            LOCAL_IP="$HOST"
+        fi
+        echo "the agent web ui is live at http://$LOCAL_IP:9119 (sign in with your dashboard password)"
+    else
+        echo "the agent web ui is live at http://$HOST:9119 (loopback only — no password set)"
+        echo "  expose it on the LAN:  sudo snap set ${SNAP_NAME:-all-dev-hermesagent} dashboard-username=admin dashboard-password=<password>"
+        echo "  or keep it local:      ssh -L 9119:127.0.0.1:9119 <this-host>"
+    fi
+
+    # No --insecure: it no longer bypasses the auth gate, it only logs a warning.
+    "$SNAP/bin/hermes" dashboard --host "$HOST" &
     wait $!
     exit 0
 fi

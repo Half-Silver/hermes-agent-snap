@@ -56,6 +56,53 @@ update_env "EXA_API_KEY"            "exa-api-key"
 update_env "TAVILY_API_KEY"         "tavily-api-key"
 update_env "FIRECRAWL_API_KEY"      "firecrawl-api-key"
 
+# --- Dashboard auth (basic username/password) ---
+# A non-loopback dashboard bind ALWAYS requires an auth provider (the
+# June-2026 hardening; --insecure is a no-op). Configure one here and the
+# dashboard service binds 0.0.0.0; leave it unset and it stays on loopback.
+#
+#   snap set <snap> dashboard-username=admin dashboard-password=<password>
+#
+# The plaintext password is hashed with the bundled scrypt helper and then
+# dropped from snap config — only the hash is persisted (.env is 0644).
+DASH_USER=$(snapctl get dashboard-username 2>/dev/null || true)
+DASH_PW=$(snapctl get dashboard-password 2>/dev/null || true)
+DASH_PW_HASH=$(snapctl get dashboard-password-hash 2>/dev/null || true)
+DASH_SECRET=$(snapctl get dashboard-session-secret 2>/dev/null || true)
+
+write_env_kv() {
+    key="$1"
+    val="$2"
+    sed -i "/^${key}=/d" "$ENV_FILE"
+    if [ -n "$val" ]; then
+        echo "${key}=${val}" >> "$ENV_FILE"
+    fi
+}
+
+if [ -n "$DASH_PW" ]; then
+    # Hash on stdin so the plaintext never appears in the process table.
+    NEW_HASH=$(printf '%s' "$DASH_PW" | "$SNAP/bin/python3" -c 'import sys
+from plugins.dashboard_auth.basic import hash_password
+print(hash_password(sys.stdin.read()))' 2>/dev/null || true)
+    if [ -n "$NEW_HASH" ]; then
+        DASH_PW_HASH="$NEW_HASH"
+        snapctl set dashboard-password-hash="$NEW_HASH" 2>/dev/null || true
+        snapctl unset dashboard-password 2>/dev/null || true
+    else
+        echo "warning: could not hash dashboard-password — dashboard auth unchanged" >&2
+    fi
+fi
+
+if [ -n "$DASH_USER" ] && [ -n "$DASH_PW_HASH" ] && [ -z "$DASH_SECRET" ]; then
+    # Stable token-signing key so logins survive a dashboard restart.
+    DASH_SECRET=$(head -c 32 /dev/urandom | base64 | tr -d '\n=' | tr '+/' '-_')
+    snapctl set dashboard-session-secret="$DASH_SECRET" 2>/dev/null || true
+fi
+
+write_env_kv "HERMES_DASHBOARD_BASIC_AUTH_USERNAME"      "$DASH_USER"
+write_env_kv "HERMES_DASHBOARD_BASIC_AUTH_PASSWORD_HASH" "$DASH_PW_HASH"
+write_env_kv "HERMES_DASHBOARD_BASIC_AUTH_SECRET"        "$DASH_SECRET"
+
 # --- Settings (config.yaml) ---
 update_config "model"            "model"
 update_config "model.provider"   "model-provider"
@@ -86,6 +133,14 @@ handle_service "acp-service"            "acp"
 handle_service "gateway-service"        "gateway"
 handle_service "dashboard-service"      "dashboard"
 handle_service "config-watcher-service" "config-watcher"
+
+# Re-read dashboard credentials / bind host without a manual restart.
+# Only touches an already-running dashboard, so this never starts a service
+# the operator deliberately disabled.
+if snapctl services all-dev-hermesagent.dashboard 2>/dev/null \
+    | awk 'NR>1 && $3 == "active" { found = 1 } END { exit !found }'; then
+    snapctl restart all-dev-hermesagent.dashboard 2>/dev/null || true
+fi
 
 # CT Engine
 CT_URL=$(snapctl get ct-callback-url)
